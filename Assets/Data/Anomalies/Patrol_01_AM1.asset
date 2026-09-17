@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 39dba4f6757955e4a907bda9b3052081, type: 3}
+  m_Name: Patrol_01_AM1
+  m_EditorClassIdentifier: RuleGhost.Anomalies::RuleGhost.Anomalies.PatrolProfile
+  patrolIndex: 1
+  slot: 0
+  duty: {fileID: 11400000, guid: 932ecd464e31cee48b9544a851829670, type: 2}
+  anomalyPool: []
+  difficulty: 0
