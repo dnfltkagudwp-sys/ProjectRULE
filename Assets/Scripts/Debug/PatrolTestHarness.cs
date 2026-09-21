@@ -53,8 +53,9 @@ namespace RuleGhost.Debugging
             var profile = profiles[profileIndex];
             var result = PatrolGenerator.Generate(profile, ruleSet, rng);
 
-            Debug.Log($"[PatrolTestHarness] Patrol {profile.PatrolIndex} ({profile.Slot}, {profile.Difficulty}) " +
-                      $"-> {result.Anomalies.Count} anomaly(s)");
+            Debug.Log($"[PatrolTestHarness] DEBUG ROLL (tint + label only, does not touch real game state/textures) -- " +
+                      $"Patrol {profile.PatrolIndex} ({profile.Slot}, {profile.Difficulty}) -> {result.Anomalies.Count} anomaly(s). " +
+                      "For the real effect (texture swap, door angle, etc.), play through PatrolRuntimeController instead.");
 
             foreach (var anomaly in result.Anomalies)
             {

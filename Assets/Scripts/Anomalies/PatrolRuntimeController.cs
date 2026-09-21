@@ -9,10 +9,9 @@ namespace RuleGhost.Anomalies
     // what the player did itself (that's PatrolProgress) -- this only sequences the three states
     // and moves to the next PatrolProfile in order when one round ends.
     //
-    // Anomaly application is not implemented yet: PatrolGenerator.Generate still runs (so the
-    // Conflict Validator/generation path stays exercised), but the resulting anomalies are
-    // logged and otherwise ignored this milestone. See the class-level comment in
-    // AnomalyRuntimeApplier (not yet created) for where that hooks in.
+    // Each round's generated anomalies are handed to AnomalyRuntimeApplier so they're actually
+    // visible/tangible in the scene (a swapped painting texture, an open door, ...) -- see that
+    // class for what it does and does not cover yet.
     public class PatrolRuntimeController : MonoBehaviour
     {
         public enum State
@@ -25,6 +24,7 @@ namespace RuleGhost.Anomalies
 
         [SerializeField] private PatrolProfile[] patrolSequence = new PatrolProfile[6];
         [SerializeField] private CombinationRuleSet combinationRuleSet;
+        [SerializeField] private PatrolSceneBindings sceneBindings;
 
         public static PatrolRuntimeController Instance { get; private set; }
 
@@ -35,6 +35,7 @@ namespace RuleGhost.Anomalies
 
         private int currentIndex = -1;
         private Random rng;
+        private readonly AnomalyRuntimeApplier anomalyApplier = new();
 
         private void Awake()
         {
@@ -68,9 +69,19 @@ namespace RuleGhost.Anomalies
             LastResult = null;
             CurrentState = State.PatrolActive;
 
+            anomalyApplier.ResetAll(sceneBindings);
             var generation = PatrolGenerator.Generate(CurrentProfile, combinationRuleSet, rng);
+            if (sceneBindings != null)
+            {
+                anomalyApplier.Apply(sceneBindings, generation.Anomalies);
+            }
+            else if (generation.Anomalies.Count > 0)
+            {
+                Debug.LogWarning("[PatrolRuntimeController] PatrolSceneBindings not assigned -- anomalies generated but not applied.");
+            }
+
             Debug.Log($"[PatrolRuntimeController] Patrol {CurrentProfile.PatrolIndex} ({CurrentProfile.Slot}) started -- " +
-                      $"{generation.Anomalies.Count} anomaly(ies) generated (not yet applied this milestone).");
+                      $"{generation.Anomalies.Count} anomaly(ies) applied.");
         }
 
         // Called by PatrolInteractable when the player checks something. Ignored outside
@@ -114,10 +125,11 @@ namespace RuleGhost.Anomalies
         }
 
 #if UNITY_EDITOR
-        public void EditorConfigure(PatrolProfile[] profiles, CombinationRuleSet ruleSet)
+        public void EditorConfigure(PatrolProfile[] profiles, CombinationRuleSet ruleSet, PatrolSceneBindings bindings)
         {
             patrolSequence = profiles;
             combinationRuleSet = ruleSet;
+            sceneBindings = bindings;
         }
 #endif
     }

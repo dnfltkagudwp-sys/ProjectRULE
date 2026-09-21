@@ -14,6 +14,7 @@ namespace RuleGhost.EditorTools
     public static class AttachPatrolRuntime
     {
         private const string ScenePath = "Assets/Scenes/Lobby_Graybox.unity";
+        private const float InteractRange = 3.5f;
 
         [MenuItem("RuleGhost/Anomalies/Attach Patrol Runtime")]
         public static void Run()
@@ -35,6 +36,12 @@ namespace RuleGhost.EditorTools
 
             var bindingsGO = GameObject.Find("PatrolSceneBindings");
             var parent = bindingsGO != null ? bindingsGO.transform.parent : null;
+            var sceneBindings = bindingsGO != null ? bindingsGO.GetComponent<PatrolSceneBindings>() : null;
+            if (sceneBindings == null)
+            {
+                Debug.LogError("[AttachPatrolRuntime] Could not find PatrolSceneBindings in the scene.");
+                return;
+            }
 
             var ruleSet = AssetDatabase.LoadAssetAtPath<CombinationRuleSet>("Assets/Data/Anomalies/CombinationRuleSet.asset");
             var profiles = new[]
@@ -64,7 +71,7 @@ namespace RuleGhost.EditorTools
             {
                 controller = controllerGO.AddComponent<PatrolRuntimeController>();
             }
-            controller.EditorConfigure(profiles, ruleSet);
+            controller.EditorConfigure(profiles, ruleSet, sceneBindings);
 
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
             EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene());
@@ -82,6 +89,7 @@ namespace RuleGhost.EditorTools
             var interactable = go.GetComponent<PatrolInteractable>();
             if (interactable == null) interactable = go.AddComponent<PatrolInteractable>();
             interactable.EditorConfigure(TargetKind.SpecificPainting, wall, index);
+            interactable.EditorSetInteractRange(InteractRange);
         }
 
         private static void AttachSimple(string name, TargetKind kind)
@@ -95,6 +103,7 @@ namespace RuleGhost.EditorTools
             var interactable = go.GetComponent<PatrolInteractable>();
             if (interactable == null) interactable = go.AddComponent<PatrolInteractable>();
             interactable.EditorConfigure(kind);
+            interactable.EditorSetInteractRange(InteractRange);
         }
     }
 }

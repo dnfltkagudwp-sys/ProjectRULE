@@ -10,7 +10,7 @@ namespace RuleGhost.Debugging
     {
         [SerializeField] private float moveSpeed = 3.5f;
         [SerializeField] private float sprintSpeed = 6.0f;
-        [SerializeField] private float mouseSensitivity = 0.25f;
+        [SerializeField] private float mouseSensitivity = 0.35f;
         [SerializeField] private float gravity = -9.81f;
 
         private CharacterController controller;
@@ -23,6 +23,7 @@ namespace RuleGhost.Debugging
             controller = GetComponent<CharacterController>();
             cam = GetComponentInChildren<Camera>();
             Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
         }
 
         private void Update()
@@ -62,6 +63,7 @@ namespace RuleGhost.Debugging
             if (keyboard.escapeKey.wasPressedThisFrame)
             {
                 Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
             }
         }
     }

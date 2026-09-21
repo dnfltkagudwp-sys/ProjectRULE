@@ -16,7 +16,9 @@ namespace RuleGhost.Anomalies
         [SerializeField] private TargetKind kind;
         [SerializeField] private PaintingWall wall;
         [SerializeField] private int index = 1; // 1-based, only meaningful for SpecificPainting
-        [SerializeField] private float interactRange = 2.5f;
+        // Paintings sit almost flush against the wall, but the walkable aisle can be several
+        // meters away from it -- 2.5m meant standing right up against the frame to interact.
+        [SerializeField] private float interactRange = 3.5f;
 
         private Transform player;
 
@@ -54,6 +56,11 @@ namespace RuleGhost.Anomalies
             kind = targetKind;
             wall = paintingWall;
             index = paintingIndex;
+        }
+
+        public void EditorSetInteractRange(float range)
+        {
+            interactRange = range;
         }
 #endif
     }
