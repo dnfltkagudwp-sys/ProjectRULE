@@ -588,6 +588,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 110298264}
+  - component: {fileID: 110298265}
   m_Layer: 0
   m_Name: CheckPoint_Entrance
   m_TagString: Untagged
@@ -610,6 +611,22 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1796026779}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &110298265
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 110298263}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58e4da316dd820a4ab3af4a74dcdb251, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RuleGhost.Anomalies::RuleGhost.Anomalies.PatrolInteractable
+  kind: 3
+  wall: 0
+  index: 1
+  interactRange: 2.5
 --- !u!1 &133788668
 GameObject:
   m_ObjectHideFlags: 0
@@ -982,6 +999,7 @@ GameObject:
   - component: {fileID: 157408900}
   - component: {fileID: 157408899}
   - component: {fileID: 157408898}
+  - component: {fileID: 157408901}
   m_Layer: 0
   m_Name: Painting_North_3
   m_TagString: Untagged
@@ -1082,6 +1100,22 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 157408896}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &157408901
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 157408896}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58e4da316dd820a4ab3af4a74dcdb251, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RuleGhost.Anomalies::RuleGhost.Anomalies.PatrolInteractable
+  kind: 0
+  wall: 0
+  index: 3
+  interactRange: 2.5
 --- !u!1 &162773806
 GameObject:
   m_ObjectHideFlags: 0
@@ -1666,6 +1700,7 @@ GameObject:
   - component: {fileID: 224106029}
   - component: {fileID: 224106028}
   - component: {fileID: 224106027}
+  - component: {fileID: 224106030}
   m_Layer: 0
   m_Name: Painting_West_1
   m_TagString: Untagged
@@ -1766,6 +1801,22 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 224106025}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &224106030
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 224106025}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58e4da316dd820a4ab3af4a74dcdb251, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RuleGhost.Anomalies::RuleGhost.Anomalies.PatrolInteractable
+  kind: 0
+  wall: 1
+  index: 1
+  interactRange: 2.5
 --- !u!1 &242921988
 GameObject:
   m_ObjectHideFlags: 0
@@ -3686,6 +3737,7 @@ GameObject:
   - component: {fileID: 469341358}
   - component: {fileID: 469341357}
   - component: {fileID: 469341356}
+  - component: {fileID: 469341359}
   m_Layer: 0
   m_Name: Painting_North_1
   m_TagString: Untagged
@@ -3786,6 +3838,22 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 469341354}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &469341359
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 469341354}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58e4da316dd820a4ab3af4a74dcdb251, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RuleGhost.Anomalies::RuleGhost.Anomalies.PatrolInteractable
+  kind: 0
+  wall: 0
+  index: 1
+  interactRange: 2.5
 --- !u!1 &474452635
 GameObject:
   m_ObjectHideFlags: 0
@@ -4945,6 +5013,7 @@ GameObject:
   - component: {fileID: 559496624}
   - component: {fileID: 559496623}
   - component: {fileID: 559496622}
+  - component: {fileID: 559496625}
   m_Layer: 0
   m_Name: Painting_East_2
   m_TagString: Untagged
@@ -5045,6 +5114,22 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 559496620}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &559496625
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 559496620}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58e4da316dd820a4ab3af4a74dcdb251, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RuleGhost.Anomalies::RuleGhost.Anomalies.PatrolInteractable
+  kind: 0
+  wall: 2
+  index: 2
+  interactRange: 2.5
 --- !u!1 &561054573
 GameObject:
   m_ObjectHideFlags: 0
@@ -5263,6 +5348,7 @@ Transform:
   - {fileID: 1433263836}
   - {fileID: 1245881124}
   - {fileID: 1602721333}
+  - {fileID: 2052430261}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &578750260
@@ -7589,6 +7675,7 @@ GameObject:
   - component: {fileID: 776294249}
   - component: {fileID: 776294248}
   - component: {fileID: 776294247}
+  - component: {fileID: 776294250}
   m_Layer: 0
   m_Name: Painting_East_1
   m_TagString: Untagged
@@ -7689,6 +7776,22 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 776294245}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &776294250
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 776294245}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58e4da316dd820a4ab3af4a74dcdb251, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RuleGhost.Anomalies::RuleGhost.Anomalies.PatrolInteractable
+  kind: 0
+  wall: 2
+  index: 1
+  interactRange: 2.5
 --- !u!1001 &778507248
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -10438,6 +10541,7 @@ GameObject:
   - component: {fileID: 1072705917}
   - component: {fileID: 1072705916}
   - component: {fileID: 1072705915}
+  - component: {fileID: 1072705918}
   m_Layer: 0
   m_Name: Painting_East_3
   m_TagString: Untagged
@@ -10538,6 +10642,22 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1072705913}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1072705918
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1072705913}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58e4da316dd820a4ab3af4a74dcdb251, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RuleGhost.Anomalies::RuleGhost.Anomalies.PatrolInteractable
+  kind: 0
+  wall: 2
+  index: 3
+  interactRange: 2.5
 --- !u!1 &1078843949
 GameObject:
   m_ObjectHideFlags: 0
@@ -11142,6 +11262,7 @@ GameObject:
   - component: {fileID: 1161540554}
   - component: {fileID: 1161540553}
   - component: {fileID: 1161540552}
+  - component: {fileID: 1161540555}
   m_Layer: 0
   m_Name: Painting_North_2
   m_TagString: Untagged
@@ -11242,6 +11363,22 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1161540550}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1161540555
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1161540550}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58e4da316dd820a4ab3af4a74dcdb251, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RuleGhost.Anomalies::RuleGhost.Anomalies.PatrolInteractable
+  kind: 0
+  wall: 0
+  index: 2
+  interactRange: 2.5
 --- !u!1001 &1162982977
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -15793,6 +15930,7 @@ GameObject:
   - component: {fileID: 1539500676}
   - component: {fileID: 1539500675}
   - component: {fileID: 1539500674}
+  - component: {fileID: 1539500677}
   m_Layer: 0
   m_Name: Painting_West_3
   m_TagString: Untagged
@@ -15893,6 +16031,22 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1539500672}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1539500677
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1539500672}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58e4da316dd820a4ab3af4a74dcdb251, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RuleGhost.Anomalies::RuleGhost.Anomalies.PatrolInteractable
+  kind: 0
+  wall: 1
+  index: 3
+  interactRange: 2.5
 --- !u!1 &1545939711
 GameObject:
   m_ObjectHideFlags: 0
@@ -15905,6 +16059,7 @@ GameObject:
   - component: {fileID: 1545939715}
   - component: {fileID: 1545939714}
   - component: {fileID: 1545939713}
+  - component: {fileID: 1545939716}
   m_Layer: 0
   m_Name: CheckPoint_ThermoHygrometer
   m_TagString: Untagged
@@ -16005,6 +16160,22 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1545939711}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1545939716
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1545939711}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58e4da316dd820a4ab3af4a74dcdb251, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RuleGhost.Anomalies::RuleGhost.Anomalies.PatrolInteractable
+  kind: 1
+  wall: 0
+  index: 1
+  interactRange: 2.5
 --- !u!1 &1550264838
 GameObject:
   m_ObjectHideFlags: 0
@@ -17352,6 +17523,7 @@ GameObject:
   - component: {fileID: 1694987132}
   - component: {fileID: 1694987131}
   - component: {fileID: 1694987130}
+  - component: {fileID: 1694987133}
   m_Layer: 0
   m_Name: Painting_West_2
   m_TagString: Untagged
@@ -17452,6 +17624,22 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1694987128}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1694987133
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1694987128}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58e4da316dd820a4ab3af4a74dcdb251, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RuleGhost.Anomalies::RuleGhost.Anomalies.PatrolInteractable
+  kind: 0
+  wall: 1
+  index: 2
+  interactRange: 2.5
 --- !u!1 &1697150624
 GameObject:
   m_ObjectHideFlags: 0
@@ -20229,6 +20417,7 @@ GameObject:
   - component: {fileID: 1979669899}
   - component: {fileID: 1979669898}
   - component: {fileID: 1979669897}
+  - component: {fileID: 1979669900}
   m_Layer: 0
   m_Name: CheckPoint_InspectionDoor
   m_TagString: Untagged
@@ -20329,6 +20518,22 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1979669895}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1979669900
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1979669895}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58e4da316dd820a4ab3af4a74dcdb251, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RuleGhost.Anomalies::RuleGhost.Anomalies.PatrolInteractable
+  kind: 2
+  wall: 0
+  index: 1
+  interactRange: 2.5
 --- !u!1 &1980278671
 GameObject:
   m_ObjectHideFlags: 0
@@ -20951,6 +21156,58 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2022793582}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &2052430260
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2052430261}
+  - component: {fileID: 2052430262}
+  m_Layer: 0
+  m_Name: PatrolRuntimeController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2052430261
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2052430260}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 576811614}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2052430262
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2052430260}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ee72f6c8d8754de4da5d20ee83fd7153, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RuleGhost.Anomalies::RuleGhost.Anomalies.PatrolRuntimeController
+  patrolSequence:
+  - {fileID: 11400000, guid: 2ed020c7b40f5b9408ae2a1cc6023495, type: 2}
+  - {fileID: 11400000, guid: 939c14375fb67da4288c498859474bb8, type: 2}
+  - {fileID: 11400000, guid: 68aef5f01f4dbc840abce9e61ddb8916, type: 2}
+  - {fileID: 11400000, guid: e2c4459ef47f3a04f92d772ce0b39517, type: 2}
+  - {fileID: 11400000, guid: a48e3fbd9e93b6a4194e2424196f670e, type: 2}
+  - {fileID: 11400000, guid: c543d8a614285764facb92db22ecd53a, type: 2}
+  combinationRuleSet: {fileID: 11400000, guid: 8b4389b36901f6a4bb29dd0180739a1f, type: 2}
 --- !u!1001 &2056392173
 PrefabInstance:
   m_ObjectHideFlags: 0

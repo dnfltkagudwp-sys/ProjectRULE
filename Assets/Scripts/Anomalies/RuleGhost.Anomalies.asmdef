@@ -1,7 +1,9 @@
 {
     "name": "RuleGhost.Anomalies",
     "rootNamespace": "RuleGhost.Anomalies",
-    "references": [],
+    "references": [
+        "Unity.InputSystem"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
