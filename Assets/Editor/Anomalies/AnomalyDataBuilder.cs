@@ -32,15 +32,19 @@ namespace RuleGhost.EditorTools
                 required: new[] { new ActionRequirement(TargetRef.Simple(TargetKind.EntranceDoor), ActionTag.CheckEntranceDoorClosed) },
                 forbidden: new[] { new ActionRequirement(TargetRef.Simple(TargetKind.WholePatrol), ActionTag.ReturnToGuardRoom) });
 
+            // Wall subject matter is fixed (2026-09-18): North = portraits, West = landscapes,
+            // East = abstracts. Portrait/landscape anomalies must resolve to their own wall only.
             var eyesOpenPortrait = CreateAnomaly("EyesOpenPortrait", "눈뜬 초상화",
                 slots: new[] { TimeSlot.AM1 }, terminal: false, mirror: false, paintingTarget: true,
                 required: System.Array.Empty<ActionRequirement>(),
-                forbidden: new[] { new ActionRequirement(TargetPlaceholder.AnyPainting, ActionTag.MakeEyeContact) });
+                forbidden: new[] { new ActionRequirement(TargetPlaceholder.AnyPainting, ActionTag.MakeEyeContact) },
+                wallOptions: new[] { PaintingWall.North });
 
             var personInLandscape = CreateAnomaly("PersonInLandscape", "사람이 나타난 풍경화",
                 slots: new[] { TimeSlot.AM1 }, terminal: false, mirror: false, paintingTarget: true,
                 required: new[] { new ActionRequirement(TargetPlaceholder.AnyPainting, ActionTag.TurnAwayFromExhibit) },
-                forbidden: new[] { new ActionRequirement(TargetPlaceholder.AnyPainting, ActionTag.RecheckExhibit) });
+                forbidden: new[] { new ActionRequirement(TargetPlaceholder.AnyPainting, ActionTag.RecheckExhibit) },
+                wallOptions: new[] { PaintingWall.West });
 
             var flippedPainting = CreateAnomaly("FlippedPainting", "뒤집힌 그림",
                 slots: new[] { TimeSlot.AM1, TimeSlot.AM5 }, terminal: false, mirror: true, paintingTarget: false,
@@ -87,7 +91,7 @@ namespace RuleGhost.EditorTools
                            "기본값과 동일하지만 검토 기록용으로 명시적으로 남김."
                 }
             });
-            SaveAsset(ruleSet, "CombinationRuleSet");
+            ruleSet = SaveAsset(ruleSet, "CombinationRuleSet");
 
             var am1Pool = new List<AnomalyDefinition> { eyesOpenPortrait, personInLandscape, flippedPainting };
             var am5Pool = new List<AnomalyDefinition> { highHumidity, flippedPainting, doorAjar, doorWideOpen, soundFromExhibit, knockOnDoor };
@@ -96,8 +100,8 @@ namespace RuleGhost.EditorTools
             CreateProfile(2, TimeSlot.AM5, dutyAm5, am5Pool, DifficultyRule.SingleZeroOrOne);
             CreateProfile(3, TimeSlot.AM1, dutyAm1, am1Pool, DifficultyRule.SingleOne);
             CreateProfile(4, TimeSlot.AM5, dutyAm5, am5Pool, DifficultyRule.SingleOne);
-            CreateProfile(5, TimeSlot.AM1, dutyAm1, am1Pool, DifficultyRule.CompoundOnePlusOptionalSingle);
-            CreateProfile(6, TimeSlot.AM5, dutyAm5, am5Pool, DifficultyRule.CompoundOnePlusOptionalSingle);
+            CreateProfile(5, TimeSlot.AM1, dutyAm1, am1Pool, DifficultyRule.CompoundOnly);
+            CreateProfile(6, TimeSlot.AM5, dutyAm5, am5Pool, DifficultyRule.CompoundOnly);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -108,17 +112,16 @@ namespace RuleGhost.EditorTools
         {
             var duty = ScriptableObject.CreateInstance<PatrolDuty>();
             duty.EditorInitialize(id, slot, required, forbidden);
-            SaveAsset(duty, id);
-            return duty;
+            return SaveAsset(duty, id);
         }
 
         private static AnomalyDefinition CreateAnomaly(string id, string displayName, TimeSlot[] slots, bool terminal,
-            bool mirror, bool paintingTarget, ActionRequirement[] required, ActionRequirement[] forbidden)
+            bool mirror, bool paintingTarget, ActionRequirement[] required, ActionRequirement[] forbidden,
+            PaintingWall[] wallOptions = null)
         {
             var anomaly = ScriptableObject.CreateInstance<AnomalyDefinition>();
-            anomaly.EditorInitialize(id, displayName, slots, terminal, mirror, paintingTarget, required, forbidden);
-            SaveAsset(anomaly, "Anomaly_" + id);
-            return anomaly;
+            anomaly.EditorInitialize(id, displayName, slots, terminal, mirror, paintingTarget, required, forbidden, wallOptions);
+            return SaveAsset(anomaly, "Anomaly_" + id);
         }
 
         private static void CreateProfile(int index, TimeSlot slot, PatrolDuty duty, List<AnomalyDefinition> pool,
@@ -129,15 +132,24 @@ namespace RuleGhost.EditorTools
             SaveAsset(profile, $"Patrol_{index:00}_{slot}");
         }
 
-        private static void SaveAsset(Object asset, string name)
+        // Updates the existing asset's data in place (via CopySerialized) when one already
+        // exists at this path, instead of delete+recreate — that would mint a fresh GUID every
+        // run and silently break any scene/asset that already references the old one (e.g. the
+        // graybox scene's PatrolTestHarness/PatrolSceneBindings wiring).
+        private static T SaveAsset<T>(T asset, string name) where T : ScriptableObject
         {
             string path = $"{DataFolder}/{name}.asset";
-            var existing = AssetDatabase.LoadAssetAtPath<Object>(path);
+            var existing = AssetDatabase.LoadAssetAtPath<T>(path);
             if (existing != null)
             {
-                AssetDatabase.DeleteAsset(path);
+                EditorUtility.CopySerialized(asset, existing);
+                EditorUtility.SetDirty(existing);
+                Object.DestroyImmediate(asset);
+                return existing;
             }
+
             AssetDatabase.CreateAsset(asset, path);
+            return asset;
         }
 
         private static void EnsureFolder(string path)

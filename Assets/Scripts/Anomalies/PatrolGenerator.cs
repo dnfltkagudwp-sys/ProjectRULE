@@ -30,12 +30,8 @@ namespace RuleGhost.Anomalies
                     AddSingle(profile, ruleSet, rng, result, active);
                     break;
 
-                case DifficultyRule.CompoundOnePlusOptionalSingle:
+                case DifficultyRule.CompoundOnly:
                     AddCompoundPair(profile, ruleSet, rng, result, active);
-                    if (rng.Next(2) == 1)
-                    {
-                        AddSingle(profile, ruleSet, rng, result, active);
-                    }
                     break;
             }
 

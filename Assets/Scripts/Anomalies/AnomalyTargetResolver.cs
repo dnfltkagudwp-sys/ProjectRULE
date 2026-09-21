@@ -22,7 +22,10 @@ namespace RuleGhost.Anomalies
             }
             else if (def.NeedsPaintingTarget)
             {
-                var wall = AllWalls[rng.Next(AllWalls.Length)];
+                // Restrict to the anomaly's allowed wall(s) if it has any (e.g. a portrait
+                // anomaly only ever lands on the North wall); otherwise any wall is fair game.
+                IReadOnlyList<PaintingWall> walls = def.PaintingWallOptions.Count > 0 ? def.PaintingWallOptions : AllWalls;
+                var wall = walls[rng.Next(walls.Count)];
                 int index = rng.Next(1, 4);
                 any = TargetRef.Painting(wall, index);
             }

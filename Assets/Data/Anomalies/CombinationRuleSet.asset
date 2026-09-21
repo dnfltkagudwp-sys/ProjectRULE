@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 36ac582156fb76b4380eca693276c7d2, type: 3}
-  m_Name: CombinationRuleSet
+  m_Name: 
   m_EditorClassIdentifier: RuleGhost.Anomalies::RuleGhost.Anomalies.CombinationRuleSet
   rules:
   - AnomalyA: {fileID: 11400000, guid: 8dc51f2ba556c854ca3f6e8bef258b90, type: 2}

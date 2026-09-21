@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a935d42bc673df94db24a11f84c6a9cb, type: 3}
-  m_Name: Anomaly_InspectionDoorWideOpen
+  m_Name: 
   m_EditorClassIdentifier: RuleGhost.Anomalies::RuleGhost.Anomalies.AnomalyDefinition
   id: InspectionDoorWideOpen
   displayName: "\uC810\uAC80\uBB38 \uC644\uC804\uAC1C\uBC29"
@@ -18,6 +18,7 @@ MonoBehaviour:
   isTerminal: 1
   usesMirrorPairing: 0
   needsPaintingTarget: 0
+  paintingWallOptions: 
   requiredActions:
   - Target:
       Kind: 4

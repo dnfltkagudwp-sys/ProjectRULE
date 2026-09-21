@@ -23,10 +23,11 @@ namespace RuleGhost.Anomalies.Tests
         }
 
         private static AnomalyDefinition MakeAnomaly(string id, TimeSlot[] slots, bool terminal, bool mirror,
-            bool paintingTarget, ActionRequirement[] required, ActionRequirement[] forbidden)
+            bool paintingTarget, ActionRequirement[] required, ActionRequirement[] forbidden,
+            PaintingWall[] wallOptions = null)
         {
             var def = ScriptableObject.CreateInstance<AnomalyDefinition>();
-            def.EditorInitialize(id, id, slots, terminal, mirror, paintingTarget, required, forbidden);
+            def.EditorInitialize(id, id, slots, terminal, mirror, paintingTarget, required, forbidden, wallOptions);
             return def;
         }
 
@@ -51,11 +52,13 @@ namespace RuleGhost.Anomalies.Tests
 
             f.EyesOpenPortrait = MakeAnomaly("EyesOpenPortrait", new[] { TimeSlot.AM1 }, false, false, true,
                 Array.Empty<ActionRequirement>(),
-                new[] { new ActionRequirement(TargetPlaceholder.AnyPainting, ActionTag.MakeEyeContact) });
+                new[] { new ActionRequirement(TargetPlaceholder.AnyPainting, ActionTag.MakeEyeContact) },
+                new[] { PaintingWall.North });
 
             f.PersonInLandscape = MakeAnomaly("PersonInLandscape", new[] { TimeSlot.AM1 }, false, false, true,
                 new[] { new ActionRequirement(TargetPlaceholder.AnyPainting, ActionTag.TurnAwayFromExhibit) },
-                new[] { new ActionRequirement(TargetPlaceholder.AnyPainting, ActionTag.RecheckExhibit) });
+                new[] { new ActionRequirement(TargetPlaceholder.AnyPainting, ActionTag.RecheckExhibit) },
+                new[] { PaintingWall.West });
 
             f.FlippedPainting = MakeAnomaly("FlippedPainting", new[] { TimeSlot.AM1, TimeSlot.AM5 }, false, true, false,
                 new[] { new ActionRequirement(TargetPlaceholder.MirrorTarget, ActionTag.FlipPainting) },
@@ -105,8 +108,8 @@ namespace RuleGhost.Anomalies.Tests
                 Profile(2, TimeSlot.AM5, f.DutyAm5, f.Am5Pool, DifficultyRule.SingleZeroOrOne),
                 Profile(3, TimeSlot.AM1, f.DutyAm1, f.Am1Pool, DifficultyRule.SingleOne),
                 Profile(4, TimeSlot.AM5, f.DutyAm5, f.Am5Pool, DifficultyRule.SingleOne),
-                Profile(5, TimeSlot.AM1, f.DutyAm1, f.Am1Pool, DifficultyRule.CompoundOnePlusOptionalSingle),
-                Profile(6, TimeSlot.AM5, f.DutyAm5, f.Am5Pool, DifficultyRule.CompoundOnePlusOptionalSingle)
+                Profile(5, TimeSlot.AM1, f.DutyAm1, f.Am1Pool, DifficultyRule.CompoundOnly),
+                Profile(6, TimeSlot.AM5, f.DutyAm5, f.Am5Pool, DifficultyRule.CompoundOnly)
             };
 
             return f;
@@ -125,6 +128,23 @@ namespace RuleGhost.Anomalies.Tests
         public void MirrorPairTable_ThrowsForNorthWall()
         {
             Assert.Throws<ArgumentException>(() => MirrorPairTable.GetMirror(TargetRef.Painting(PaintingWall.North, 1)));
+        }
+
+        [Test]
+        public void AnomalyTargetResolver_RestrictsPortraitAndLandscapeToTheirOwnWall()
+        {
+            // North = portraits, West = landscapes, East = abstracts (fixed, confirmed 2026-09-18).
+            var f = BuildFixture();
+            var rng = new Random(7);
+
+            for (int i = 0; i < 100; i++)
+            {
+                var portrait = AnomalyTargetResolver.Resolve(f.EyesOpenPortrait, rng);
+                Assert.AreEqual(PaintingWall.North, portrait.ForbiddenActions[0].Target.Wall);
+
+                var landscape = AnomalyTargetResolver.Resolve(f.PersonInLandscape, rng);
+                Assert.AreEqual(PaintingWall.West, landscape.RequiredActions[0].Target.Wall);
+            }
         }
 
         [Test]
@@ -258,11 +278,11 @@ namespace RuleGhost.Anomalies.Tests
                         DifficultyRule.None => 0,
                         DifficultyRule.SingleZeroOrOne => 1,
                         DifficultyRule.SingleOne => 1,
-                        DifficultyRule.CompoundOnePlusOptionalSingle => 3,
+                        DifficultyRule.CompoundOnly => 2,
                         _ => 0
                     };
                     int min = profile.Difficulty == DifficultyRule.SingleOne ? 1
-                        : profile.Difficulty == DifficultyRule.CompoundOnePlusOptionalSingle ? 2
+                        : profile.Difficulty == DifficultyRule.CompoundOnly ? 2
                         : 0;
 
                     Assert.GreaterOrEqual(result.Anomalies.Count, min);

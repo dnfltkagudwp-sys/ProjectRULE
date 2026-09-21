@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 433d90cdcda5b2f4b8d2a19ee9623598, type: 3}
-  m_Name: Duty_AM5
+  m_Name: 
   m_EditorClassIdentifier: RuleGhost.Anomalies::RuleGhost.Anomalies.PatrolDuty
   id: Duty_AM5
   slot: 1
