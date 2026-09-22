@@ -32,6 +32,11 @@ namespace RuleGhost.Anomalies
         private GameObject humidityLabel;
         private TextMesh humidityTextMesh;
 
+        // Same persistent-object pattern as humidityLabel, for SoundFromExhibit's audio cue.
+        private GameObject soundCueObject;
+        private AudioSource soundCueSource;
+        private static AudioClip placeholderCueClip;
+
         public void ResetAll(PatrolSceneBindings bindings)
         {
             foreach (var renderer in tintedRenderers)
@@ -57,6 +62,15 @@ namespace RuleGhost.Anomalies
             if (humidityLabel != null)
             {
                 humidityLabel.SetActive(false);
+            }
+
+            if (soundCueSource != null)
+            {
+                soundCueSource.Stop();
+            }
+            if (soundCueObject != null)
+            {
+                soundCueObject.SetActive(false);
             }
         }
 
@@ -97,6 +111,13 @@ namespace RuleGhost.Anomalies
                         break;
 
                     case "SoundFromExhibit":
+                        // FaceExhibit/ShowBackToExhibit's facing window is just "this round" --
+                        // the cue plays immediately when the anomaly is applied (here), so there's
+                        // no separate later trigger moment to wait for; ObservationRuleMonitor
+                        // watches these facing rules for every active anomaly all round anyway.
+                        PlaySoundCue(bindings, FirstTarget(anomaly.RequiredActions));
+                        break;
+
                     case "KnockOnDoor":
                         Debug.Log($"[AnomalyRuntimeApplier] {anomaly.Id} is active but has no audio implementation yet " +
                                   "(needs real sound assets) -- data/generation only for now.");
@@ -216,6 +237,59 @@ namespace RuleGhost.Anomalies
                 return;
             }
             hinge.transform.localRotation = Quaternion.Euler(0f, angle, 0f);
+        }
+
+        // No real horror sound asset exists yet -- this generates a short, cheap placeholder tone
+        // in code (no audio asset needed) so the FaceExhibit/ShowBackToExhibit facing rules have a
+        // real, in-scene moment to react to instead of being untestable until real audio arrives.
+        // Swap PlaySoundCue's clip source for a real asset later; nothing else needs to change.
+        private void PlaySoundCue(PatrolSceneBindings bindings, TargetRef target)
+        {
+            var t = bindings.Resolve(target);
+            if (t == null)
+            {
+                Debug.LogWarning($"[AnomalyRuntimeApplier] Could not resolve {target} for SoundFromExhibit cue.");
+                return;
+            }
+
+            if (soundCueObject == null)
+            {
+                soundCueObject = new GameObject("AnomalySoundCue");
+                soundCueSource = soundCueObject.AddComponent<AudioSource>();
+                soundCueSource.playOnAwake = false;
+                soundCueSource.spatialBlend = 1f;
+                soundCueSource.maxDistance = 12f;
+                soundCueSource.rolloffMode = AudioRolloffMode.Linear;
+                soundCueSource.clip = GetPlaceholderCueClip();
+            }
+
+            soundCueObject.transform.SetParent(t, false);
+            soundCueObject.transform.localPosition = Vector3.zero;
+            soundCueObject.SetActive(true);
+            soundCueSource.Play();
+        }
+
+        private static AudioClip GetPlaceholderCueClip()
+        {
+            if (placeholderCueClip != null)
+            {
+                return placeholderCueClip;
+            }
+
+            const int sampleRate = 44100;
+            const float duration = 0.8f;
+            int sampleCount = Mathf.CeilToInt(sampleRate * duration);
+            var data = new float[sampleCount];
+            for (int i = 0; i < sampleCount; i++)
+            {
+                float t = i / (float)sampleRate;
+                float envelope = Mathf.Exp(-3f * t); // quick decay so it doesn't end on an audible click
+                data[i] = Mathf.Sin(2f * Mathf.PI * 220f * t) * envelope * 0.5f;
+            }
+
+            placeholderCueClip = AudioClip.Create("AnomalySoundCue_Placeholder", sampleCount, 1, sampleRate, false);
+            placeholderCueClip.SetData(data, 0);
+            return placeholderCueClip;
         }
 
         private void ShowHumidity(PatrolSceneBindings bindings, bool isHigh)

@@ -9,32 +9,38 @@ namespace RuleGhost.Anomalies
     // PatrolRuntimeController so the runtime flow and the judging logic don't get tangled
     // together.
     //
-    // Anomaly correction judging is limited to what PatrolInteractable can actually observe --
-    // a plain "was this target visited" signal, nothing about gaze direction, held duration, or
-    // which of several actions was performed at a target. That rules out judging anomalies whose
-    // required/forbidden action is a facing/gaze thing (EyesOpenPortrait's MakeEyeContact,
-    // PersonInLandscape's TurnAwayFromExhibit/RecheckExhibit, SoundFromExhibit's
-    // FaceExhibit/ShowBackToExhibit) or one where the forbidden action's target is otherwise
-    // mandatory to visit anyway, so "visited" can't mean "did the forbidden thing" (FlippedPainting's
-    // ModifyOriginalPainting on the discovered painting -- it's one of the 9 paintings Duty_AM1
-    // requires inspecting regardless; KnockOnDoor's OperateEntranceDoor -- the entrance is always
-    // required, structurally, to end the round). Those are left for a future extension once the
-    // interaction model can distinguish more than "visited or not". What IS judgeable today:
-    //  - a required action on a target that's otherwise optional (InspectionDoorAjar's
-    //    CloseInspectionDoorFully) becomes a real required-to-visit target for the round.
-    //  - a forbidden action on a target that's otherwise optional (HighHumidity's
-    //    TouchThermostat -- the thermometer is never part of any base duty) becomes a real
-    //    "don't visit this" rule.
+    // Anomaly correction judging combines two independent signals:
+    //  - a discrete "was this target visited" event (PatrolProgress, via PatrolInteractable's E
+    //    key) for targets where visiting IS the correction (InspectionDoorAjar's
+    //    CloseInspectionDoorFully) or where NOT visiting is the violation, when that target isn't
+    //    otherwise mandatory to visit (HighHumidity's TouchThermostat).
+    //  - a continuous "was the player looking at / facing this the right way" signal
+    //    (ObservationReport, built by ObservationRuleMonitor from the player's camera every frame)
+    //    for action tags that are inherently about gaze/direction rather than a button press:
+    //    MakeEyeContact (EyesOpenPortrait), TurnAwayFromExhibit/FaceExhibit (required) and
+    //    ShowBackToExhibit (forbidden) for PersonInLandscape/SoundFromExhibit.
+    // RecheckExhibit (PersonInLandscape's forbidden action) is deliberately left alone -- it's
+    // meant to become an E-key re-interaction check later, not a gaze one, and isn't handled by
+    // either path yet. FlippedPainting's ModifyOriginalPainting and KnockOnDoor's
+    // OperateEntranceDoor still can't be judged: their target is otherwise mandatory to visit
+    // (every painting per Duty_AM1; the entrance, structurally, to end the round), so a mere visit
+    // can't mean "did the forbidden thing" -- unaffected by adding the observation path.
+    //
     //  - a terminal anomaly (InspectionDoorWideOpen) replaces the whole round's judgment: the
     //    correct move is to go straight to the entrance and abort, not finish the checklist.
     public static class PatrolEvaluator
     {
         private static readonly PaintingWall[] AllWalls = { PaintingWall.North, PaintingWall.West, PaintingWall.East };
 
+        private static bool IsObservationBased(ActionTag action) => action is
+            ActionTag.MakeEyeContact or ActionTag.TurnAwayFromExhibit or
+            ActionTag.FaceExhibit or ActionTag.ShowBackToExhibit;
+
         public static PatrolResult Evaluate(PatrolDuty duty, PatrolProgress progress,
-            IReadOnlyList<ResolvedAnomaly> anomalies = null)
+            IReadOnlyList<ResolvedAnomaly> anomalies = null, ObservationReport observation = null)
         {
             anomalies ??= Array.Empty<ResolvedAnomaly>();
+            observation ??= ObservationReport.Empty;
 
             var terminal = anomalies.FirstOrDefault(a => a.Source.IsTerminal);
             if (terminal != null)
@@ -43,11 +49,19 @@ namespace RuleGhost.Anomalies
             }
 
             var required = new HashSet<TargetRef>(BuildRequiredTargets(duty));
+            var missingObservations = new List<string>();
             foreach (var anomaly in anomalies)
             {
                 foreach (var req in anomaly.RequiredActions)
                 {
-                    if (req.Target.Kind != TargetKind.WholePatrol)
+                    if (IsObservationBased(req.Action))
+                    {
+                        if (!observation.SatisfiedRequiredAnomalyIds.Contains(anomaly.Id))
+                        {
+                            missingObservations.Add(anomaly.Id);
+                        }
+                    }
+                    else if (req.Target.Kind != TargetKind.WholePatrol)
                     {
                         required.Add(req.Target);
                     }
@@ -58,16 +72,23 @@ namespace RuleGhost.Anomalies
             bool entranceNotLast = progress.LastChecked == null
                                     || progress.LastChecked.Value.Kind != TargetKind.EntranceDoor;
 
-            // A forbidden target only counts as a real "don't visit this" rule when it isn't
-            // already required to be visited for some other reason -- otherwise the player has
-            // no way to satisfy both rules at once (e.g. every painting must be inspected per
+            // A visit-based forbidden target only counts as a real "don't visit this" rule when it
+            // isn't already required to be visited for some other reason -- otherwise the player
+            // has no way to satisfy both rules at once (e.g. every painting must be inspected per
             // Duty_AM1, so a painting-targeted forbidden action can never mean "don't visit it").
             var forbiddenTaken = new List<string>();
             foreach (var anomaly in anomalies)
             {
                 foreach (var forbid in anomaly.ForbiddenActions)
                 {
-                    if (!required.Contains(forbid.Target) && progress.HasVisited(forbid.Target))
+                    if (IsObservationBased(forbid.Action))
+                    {
+                        if (observation.ViolatedForbiddenAnomalyIds.Contains(anomaly.Id))
+                        {
+                            forbiddenTaken.Add(anomaly.Id);
+                        }
+                    }
+                    else if (!required.Contains(forbid.Target) && progress.HasVisited(forbid.Target))
                     {
                         forbiddenTaken.Add(anomaly.Id);
                     }
@@ -77,9 +98,11 @@ namespace RuleGhost.Anomalies
             return new PatrolResult
             {
                 MissingTargets = missing,
+                MissingObservations = missingObservations,
                 EntranceNotLast = entranceNotLast,
                 ForbiddenAnomalyActions = forbiddenTaken,
-                Success = missing.Count == 0 && !entranceNotLast && forbiddenTaken.Count == 0
+                Success = missing.Count == 0 && missingObservations.Count == 0
+                          && !entranceNotLast && forbiddenTaken.Count == 0
             };
         }
 

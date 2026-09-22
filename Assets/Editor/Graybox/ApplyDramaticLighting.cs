@@ -21,7 +21,11 @@ namespace RuleGhost.EditorTools
         // rather than by touching the room's overall ambient/wall tone.
         private static readonly Color PaintingWarm = new Color(1f, 0.85f, 0.65f);
         private static readonly Color StatueCool = new Color(0.82f, 0.87f, 0.95f);
-        private static readonly Color GuardWarm = new Color(1f, 0.82f, 0.55f);
+        // Was (1, 0.82, 0.55) -- a saturated orange glow that, combined with the guard room's own
+        // (now-retired) yellow-tan walls, made the room read as a different building entirely.
+        // Desaturated toward near-neutral so the room still feels like a slightly warmer, more
+        // human space than the cold gallery without breaking the shared building's color language.
+        private static readonly Color GuardWarm = new Color(0.88f, 0.86f, 0.8f);
         private static readonly Color UtilityWhite = new Color(0.82f, 0.87f, 0.92f);
 
         [MenuItem("RuleGhost/Graybox/Apply Dramatic Lighting")]
@@ -112,14 +116,15 @@ namespace RuleGhost.EditorTools
             CreateUtilityPoint(rig.transform, "Utility_InspectionDoor", new Vector3(6f, 3.2f, 9f), intensity: 1.1f, range: 6f);
             CreateUtilityPoint(rig.transform, "Utility_Thermometer", new Vector3(-5.8f, 2.8f, 9.5f), intensity: 0.9f, range: 5f);
 
-            // Guard room glows warm against the dark lobby.
+            // Guard room reads as a slightly brighter, calmer space than the gallery -- not a
+            // saturated orange glow (that read as a different building; see GuardWarm's comment).
             var guardLightGO = new GameObject("Point_GuardRoom");
             guardLightGO.transform.SetParent(rig.transform, false);
             guardLightGO.transform.position = new Vector3(-8.7f, 2f, -8f);
             var guardLight = guardLightGO.AddComponent<Light>();
             guardLight.type = LightType.Point;
             guardLight.color = GuardWarm;
-            guardLight.intensity = 8f;
+            guardLight.intensity = 5.5f;
             guardLight.range = 5f;
             AddHousing(guardLightGO.transform, PrimitiveType.Cube, new Vector3(0.25f, 0.15f, 0.25f));
 

@@ -35,10 +35,20 @@ namespace RuleGhost.Anomalies
         public PatrolProgress CurrentProgress { get; private set; }
         public PatrolResult LastResult { get; private set; }
 
+        // Exposed for ObservationDebugOverlay -- it needs to see the same round data this
+        // controller is feeding to ObservationRuleMonitor to report why a gaze/facing rule isn't
+        // (or is) triggering.
+        public IReadOnlyList<ResolvedAnomaly> CurrentAnomalies => currentAnomalies;
+        public PatrolSceneBindings SceneBindings => sceneBindings;
+
         private IReadOnlyList<ResolvedAnomaly> currentAnomalies = Array.Empty<ResolvedAnomaly>();
         private int currentIndex = -1;
         private Random rng;
         private readonly AnomalyRuntimeApplier anomalyApplier = new();
+        private readonly ObservationRuleMonitor observationMonitor = new();
+        private Camera playerCamera;
+        private Transform playerRoot;
+        private bool loggedMissingCameraWarning;
 
         private void Awake()
         {
@@ -49,6 +59,38 @@ namespace RuleGhost.Anomalies
         private void Start()
         {
             StartPatrolAt(0);
+        }
+
+        // Gaze/facing rules need a continuous per-frame check against the player's camera --
+        // everything else here reacts to discrete events (RecordVisit, StartPatrolAt), so this is
+        // the one place that needs an Update loop at all.
+        private void Update()
+        {
+            if (CurrentState != State.PatrolActive)
+            {
+                return;
+            }
+
+            if (playerCamera == null)
+            {
+                var controller = FindFirstObjectByType<CharacterController>();
+                if (controller != null)
+                {
+                    playerRoot = controller.transform;
+                    playerCamera = controller.GetComponentInChildren<Camera>();
+                }
+            }
+
+            if (playerCamera != null)
+            {
+                observationMonitor.Tick(Time.deltaTime, playerCamera, playerRoot, sceneBindings, currentAnomalies);
+            }
+            else if (!loggedMissingCameraWarning)
+            {
+                loggedMissingCameraWarning = true;
+                Debug.LogWarning("[PatrolRuntimeController] Could not find a CharacterController/Camera in the scene -- " +
+                                  "gaze/facing anomaly rules will never trigger this session.");
+            }
         }
 
         public void StartPatrolAt(int index)
@@ -73,6 +115,7 @@ namespace RuleGhost.Anomalies
             CurrentState = State.PatrolActive;
 
             anomalyApplier.ResetAll(sceneBindings);
+            observationMonitor.ResetAll();
             var generation = PatrolGenerator.Generate(CurrentProfile, combinationRuleSet, rng);
             currentAnomalies = generation.Anomalies;
             if (sceneBindings != null)
@@ -84,8 +127,11 @@ namespace RuleGhost.Anomalies
                 Debug.LogWarning("[PatrolRuntimeController] PatrolSceneBindings not assigned -- anomalies generated but not applied.");
             }
 
+            string anomalyIds = generation.Anomalies.Count > 0
+                ? string.Join(", ", System.Linq.Enumerable.Select(generation.Anomalies, a => a.Id))
+                : "(none)";
             Debug.Log($"[PatrolRuntimeController] Patrol {CurrentProfile.PatrolIndex} ({CurrentProfile.Slot}) started -- " +
-                      $"{generation.Anomalies.Count} anomaly(ies) applied.");
+                      $"{generation.Anomalies.Count} anomaly(ies) applied: [{anomalyIds}]");
         }
 
         // Called by PatrolInteractable when the player checks something. Ignored outside
@@ -109,7 +155,8 @@ namespace RuleGhost.Anomalies
         private void FinishPatrol()
         {
             CurrentState = State.Result;
-            LastResult = PatrolEvaluator.Evaluate(CurrentProfile.Duty, CurrentProgress, currentAnomalies);
+            var observation = observationMonitor.BuildReport();
+            LastResult = PatrolEvaluator.Evaluate(CurrentProfile.Duty, CurrentProgress, currentAnomalies, observation);
 
             if (LastResult.Success)
             {
@@ -123,8 +170,12 @@ namespace RuleGhost.Anomalies
                 string violated = LastResult.ForbiddenAnomalyActions.Count > 0
                     ? string.Join(", ", LastResult.ForbiddenAnomalyActions)
                     : "(none)";
+                string missingObservations = LastResult.MissingObservations.Count > 0
+                    ? string.Join(", ", LastResult.MissingObservations)
+                    : "(none)";
                 Debug.Log($"[PatrolRuntimeController] Patrol {CurrentProfile.PatrolIndex} FAILED. " +
-                          $"Missing=[{missing}] EntranceNotLast={LastResult.EntranceNotLast} ViolatedAnomalyRules=[{violated}]");
+                          $"Missing=[{missing}] EntranceNotLast={LastResult.EntranceNotLast} " +
+                          $"ViolatedAnomalyRules=[{violated}] MissingObservations=[{missingObservations}]");
             }
 
             CurrentState = State.Complete;
