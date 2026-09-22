@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 using Random = System.Random;
 
@@ -33,6 +35,7 @@ namespace RuleGhost.Anomalies
         public PatrolProgress CurrentProgress { get; private set; }
         public PatrolResult LastResult { get; private set; }
 
+        private IReadOnlyList<ResolvedAnomaly> currentAnomalies = Array.Empty<ResolvedAnomaly>();
         private int currentIndex = -1;
         private Random rng;
         private readonly AnomalyRuntimeApplier anomalyApplier = new();
@@ -71,6 +74,7 @@ namespace RuleGhost.Anomalies
 
             anomalyApplier.ResetAll(sceneBindings);
             var generation = PatrolGenerator.Generate(CurrentProfile, combinationRuleSet, rng);
+            currentAnomalies = generation.Anomalies;
             if (sceneBindings != null)
             {
                 anomalyApplier.Apply(sceneBindings, generation.Anomalies);
@@ -105,7 +109,7 @@ namespace RuleGhost.Anomalies
         private void FinishPatrol()
         {
             CurrentState = State.Result;
-            LastResult = PatrolEvaluator.Evaluate(CurrentProfile.Duty, CurrentProgress);
+            LastResult = PatrolEvaluator.Evaluate(CurrentProfile.Duty, CurrentProgress, currentAnomalies);
 
             if (LastResult.Success)
             {
@@ -116,8 +120,11 @@ namespace RuleGhost.Anomalies
                 string missing = LastResult.MissingTargets.Count > 0
                     ? string.Join(", ", LastResult.MissingTargets)
                     : "(none)";
+                string violated = LastResult.ForbiddenAnomalyActions.Count > 0
+                    ? string.Join(", ", LastResult.ForbiddenAnomalyActions)
+                    : "(none)";
                 Debug.Log($"[PatrolRuntimeController] Patrol {CurrentProfile.PatrolIndex} FAILED. " +
-                          $"Missing=[{missing}] EntranceNotLast={LastResult.EntranceNotLast}");
+                          $"Missing=[{missing}] EntranceNotLast={LastResult.EntranceNotLast} ViolatedAnomalyRules=[{violated}]");
             }
 
             CurrentState = State.Complete;
