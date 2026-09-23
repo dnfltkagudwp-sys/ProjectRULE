@@ -1,4 +1,5 @@
 using RuleGhost.Anomalies;
+using RuleGhost.Debugging;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -33,6 +34,7 @@ namespace RuleGhost.EditorTools
             AttachSimple("CheckPoint_ThermoHygrometer", TargetKind.Thermometer);
             AttachSimple("CheckPoint_InspectionDoor", TargetKind.InspectionDoor);
             AttachSimple("CheckPoint_Entrance", TargetKind.EntranceDoor);
+            RemoveInspectionDoorTestToggle();
 
             var bindingsGO = GameObject.Find("PatrolSceneBindings");
             var parent = bindingsGO != null ? bindingsGO.transform.parent : null;
@@ -90,6 +92,23 @@ namespace RuleGhost.EditorTools
             if (interactable == null) interactable = go.AddComponent<PatrolInteractable>();
             interactable.EditorConfigure(TargetKind.SpecificPainting, wall, index);
             interactable.EditorSetInteractRange(InteractRange);
+        }
+
+        // The inspection door's baseline "확인" (InspectInspectionDoor) is now a gaze-only check
+        // (see LooseObservationTracker) specifically because this leftover graybox toggle
+        // (AttachDoorTestInteraction) makes an E-key press pop a closed door open as a side
+        // effect. Real gameplay only ever needs E on this door for CloseInspectionDoorFully (when
+        // InspectionDoorAjar is actually active), which PatrolInteractable already covers without
+        // this toggle -- remove it so the two don't fight over the same key press.
+        private static void RemoveInspectionDoorTestToggle()
+        {
+            var hinge = GameObject.Find("CheckPoint_InspectionDoor_Hinge");
+            var toggle = hinge != null ? hinge.GetComponent<DoorTestInteraction>() : null;
+            if (toggle != null)
+            {
+                Object.DestroyImmediate(toggle);
+                Debug.Log("[AttachPatrolRuntime] Removed leftover DoorTestInteraction from CheckPoint_InspectionDoor_Hinge.");
+            }
         }
 
         private static void AttachSimple(string name, TargetKind kind)

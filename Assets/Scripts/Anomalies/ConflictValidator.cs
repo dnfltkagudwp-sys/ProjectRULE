@@ -10,7 +10,8 @@ namespace RuleGhost.Anomalies
         public static bool CanAdd(ResolvedAnomaly candidate, IReadOnlyList<IActionConstraint> active,
             CombinationRuleSet ruleSet, out string reason)
         {
-            var activeAnomalyDefs = active.OfType<ResolvedAnomaly>().Select(r => r.Source).ToList();
+            var activeAnomalies = active.OfType<ResolvedAnomaly>().ToList();
+            var activeAnomalyDefs = activeAnomalies.Select(r => r.Source).ToList();
 
             // 1. Combination matrix — only meaningful between two Anomalies.
             foreach (var existingDef in activeAnomalyDefs)
@@ -18,6 +19,27 @@ namespace RuleGhost.Anomalies
                 if (ruleSet.GetState(candidate.Source, existingDef) == CombinationState.Deny)
                 {
                     reason = $"combination matrix DENY: {candidate.Id} x {existingDef.Id}";
+                    return false;
+                }
+            }
+
+            // 1b. Combination matrix — CONDITIONAL pairs are fine on separate exhibits but not
+            //     worth stacking on the exact same one (even when their individual actions don't
+            //     literally clash, which check 3 below would already catch on its own). Checked
+            //     against each pair's actual resolved targets, not the placeholder definitions.
+            foreach (var existing in activeAnomalies)
+            {
+                if (ruleSet.GetState(candidate.Source, existing.Source) != CombinationState.Conditional)
+                {
+                    continue;
+                }
+
+                var existingTargets = existing.RequiredActions.Concat(existing.ForbiddenActions).Select(a => a.Target);
+                bool sameTarget = candidate.RequiredActions.Concat(candidate.ForbiddenActions)
+                    .Any(a => existingTargets.Contains(a.Target));
+                if (sameTarget)
+                {
+                    reason = $"combination matrix CONDITIONAL denied (same target): {candidate.Id} x {existing.Id}";
                     return false;
                 }
             }

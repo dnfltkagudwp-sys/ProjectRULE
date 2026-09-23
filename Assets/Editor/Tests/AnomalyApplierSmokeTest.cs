@@ -41,7 +41,7 @@ namespace RuleGhost.EditorTools
 
             var humidityResolved = new ResolvedAnomaly(highHumidity,
                 new System.Collections.Generic.List<ActionRequirement>(),
-                new System.Collections.Generic.List<ActionRequirement> { new ActionRequirement(TargetRef.Simple(TargetKind.Thermometer), ActionTag.TouchThermostat) });
+                new System.Collections.Generic.List<ActionRequirement> { new ActionRequirement(TargetRef.Simple(TargetKind.Thermometer), ActionTag.AdjustThermostat) });
 
             var applier = new AnomalyRuntimeApplier();
             applier.ResetAll(bindings); // idempotent re-run: undo any state left from a previous run of this test first

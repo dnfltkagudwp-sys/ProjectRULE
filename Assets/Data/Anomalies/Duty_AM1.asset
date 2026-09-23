@@ -16,8 +16,65 @@ MonoBehaviour:
   slot: 0
   requiredActions:
   - Target:
-      Kind: 4
+      Kind: 1
       Wall: 0
       Index: 0
-    Action: 0
+    Action: 17
+  - Target:
+      Kind: 2
+      Wall: 0
+      Index: 0
+    Action: 18
+  - Target:
+      Kind: 5
+      Wall: 0
+      Index: 0
+    Action: 9
+  - Target:
+      Kind: 0
+      Wall: 0
+      Index: 1
+    Action: 16
+  - Target:
+      Kind: 0
+      Wall: 0
+      Index: 2
+    Action: 16
+  - Target:
+      Kind: 0
+      Wall: 0
+      Index: 3
+    Action: 16
+  - Target:
+      Kind: 0
+      Wall: 1
+      Index: 1
+    Action: 16
+  - Target:
+      Kind: 0
+      Wall: 1
+      Index: 2
+    Action: 16
+  - Target:
+      Kind: 0
+      Wall: 1
+      Index: 3
+    Action: 16
+  - Target:
+      Kind: 0
+      Wall: 2
+      Index: 1
+    Action: 16
+  - Target:
+      Kind: 0
+      Wall: 2
+      Index: 2
+    Action: 16
+  - Target:
+      Kind: 0
+      Wall: 2
+      Index: 3
+    Action: 16
   forbiddenActions: []
+  ruleText: "1. \uC624\uC804 1\uC2DC\uAC00 \uB418\uBA74 \uB85C\uBE44\uB97C \uC21C\uCC30\uD558\uBA70 \uADF8\uB9BC \uC0C1\uD0DC\uB97C \uD655\uC778\uD55C\uB2E4. \uAE30\uC6B8\uC5B4\uC9C4 \uADF8\uB9BC\uC740 \uBC14\uB85C\uC7A1\uB418, \uC6C0\uC9C1\uC774\uB294 \uADF8\uB9BC\uC740 \uAE30\uC6B8\uC5B4\uC838 \uC788\uC5B4\uB3C4 \uADF8\uB300\uB85C \uB454\uB2E4. \uC810\uAC80\uC744 \uB9C8\uCE58\uBA74 \uC810\uAC80\uBB38\xB7\uC628\uC2B5\uB3C4\uACC4 \uC0C1\uD0DC\uB97C \uD655\uC778\uD55C \uB4A4 \uACBD\uBE44\uC2E4\uB85C \uBCF5\uADC0\uD55C\uB2E4."
+  ruleNumber: 1

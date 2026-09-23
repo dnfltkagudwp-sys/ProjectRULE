@@ -30,6 +30,9 @@ namespace RuleGhost.Anomalies
         public const float TowardAngleThreshold = 60f;
         public const float AwayAngleThreshold = 120f;
         public const float FrontHemisphereAngleThreshold = 90f;
+        // Generous on purpose -- the lobby's own diagonal is ~24m, and a facing rule only needs
+        // "reasonably in the room and not blocked by a wall/the center statue," not precise range.
+        public const float MaxFacingDistance = 15f;
         // Confirmed via playtest to feel right at 2s -- a facing rule (TurnAwayFromExhibit,
         // FaceExhibit, ShowBackToExhibit) needs a real, sustained turn, not a quick glance.
         public const float FacingDwellSeconds = 2f;
@@ -39,6 +42,16 @@ namespace RuleGhost.Anomalies
         private readonly Dictionary<string, float> forbiddenFacingDwell = new();
         private readonly HashSet<string> satisfiedRequired = new();
         private readonly HashSet<string> violatedForbidden = new();
+
+        // Direct read-only view (no allocation) so PatrolRuntimeController can notice a violation
+        // the same frame it happens, for the immediate-fail overlay -- BuildReport()'s copies are
+        // for the end-of-round Evaluate() pass, not for cheap per-frame polling.
+        public IReadOnlyCollection<string> ViolatedForbiddenIds => violatedForbidden;
+
+        // Same idea, the "required just got satisfied" counterpart -- lets PatrolRuntimeController
+        // trigger a required action's own visual payoff (e.g. PersonInLandscape's texture revert)
+        // the instant it's earned, not just report it at round end.
+        public IReadOnlyCollection<string> SatisfiedRequiredIds => satisfiedRequired;
 
         public void ResetAll()
         {
@@ -60,8 +73,8 @@ namespace RuleGhost.Anomalies
             foreach (var anomaly in anomalies)
             {
                 TickEyeContact(deltaTime, camera, playerRoot, bindings, anomaly);
-                TickRequiredFacing(deltaTime, camera, bindings, anomaly);
-                TickForbiddenFacing(deltaTime, camera, bindings, anomaly);
+                TickRequiredFacing(deltaTime, camera, playerRoot, bindings, anomaly);
+                TickForbiddenFacing(deltaTime, camera, playerRoot, bindings, anomaly);
             }
         }
 
@@ -98,8 +111,8 @@ namespace RuleGhost.Anomalies
             }
         }
 
-        private void TickRequiredFacing(float deltaTime, Camera camera, PatrolSceneBindings bindings,
-            ResolvedAnomaly anomaly)
+        private void TickRequiredFacing(float deltaTime, Camera camera, Transform playerRoot,
+            PatrolSceneBindings bindings, ResolvedAnomaly anomaly)
         {
             if (satisfiedRequired.Contains(anomaly.Id))
             {
@@ -126,7 +139,11 @@ namespace RuleGhost.Anomalies
                 }
 
                 float angle = FacingSensor.HorizontalAngleToTarget(camera, target);
-                bool holds = mode == FacingMode.Toward ? angle <= TowardAngleThreshold : angle >= AwayAngleThreshold;
+                bool angleHolds = mode == FacingMode.Toward ? angle <= TowardAngleThreshold : angle >= AwayAngleThreshold;
+                // A wall or the center statue between the player and the target pauses the dwell --
+                // it shouldn't be possible to satisfy (or violate) a facing rule through solid
+                // geometry, the same way GazeSensor already guards against that for MakeEyeContact.
+                bool holds = angleHolds && FacingSensor.HasClearLineOfSight(camera, target, playerRoot, MaxFacingDistance);
 
                 float dwell = requiredFacingDwell.GetValueOrDefault(anomaly.Id, 0f);
                 dwell = holds ? dwell + deltaTime : 0f;
@@ -141,8 +158,8 @@ namespace RuleGhost.Anomalies
             }
         }
 
-        private void TickForbiddenFacing(float deltaTime, Camera camera, PatrolSceneBindings bindings,
-            ResolvedAnomaly anomaly)
+        private void TickForbiddenFacing(float deltaTime, Camera camera, Transform playerRoot,
+            PatrolSceneBindings bindings, ResolvedAnomaly anomaly)
         {
             if (violatedForbidden.Contains(anomaly.Id))
             {
@@ -163,7 +180,8 @@ namespace RuleGhost.Anomalies
                 }
 
                 float angle = FacingSensor.HorizontalAngleToTarget(camera, target);
-                bool violating = angle >= FrontHemisphereAngleThreshold;
+                bool violating = angle >= FrontHemisphereAngleThreshold &&
+                    FacingSensor.HasClearLineOfSight(camera, target, playerRoot, MaxFacingDistance);
 
                 float dwell = forbiddenFacingDwell.GetValueOrDefault(anomaly.Id, 0f);
                 dwell = violating ? dwell + deltaTime : 0f;

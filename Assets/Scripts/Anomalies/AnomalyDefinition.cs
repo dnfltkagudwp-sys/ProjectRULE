@@ -18,9 +18,18 @@ namespace RuleGhost.Anomalies
         [SerializeField] private List<PaintingWall> paintingWallOptions = new();
         [SerializeField] private List<ActionRequirement> requiredActions = new();
         [SerializeField] private List<ActionRequirement> forbiddenActions = new();
+        // Player-facing rule sentence, verbatim from the design doc (e.g. "풍경화에 사람이 보인다면...")
+        // -- for the 규칙서 UI. Distinct from DisplayName, which is only a short label ("사람이 나타난 풍경화").
+        [SerializeField, TextArea] private string ruleText;
+        // The design doc's own rule number (3-9) -- lets the 규칙서 UI show every rule in the
+        // original 1-9 order. InspectionDoorAjar/InspectionDoorWideOpen share number 7 (one rule,
+        // two anomaly states).
+        [SerializeField] private int ruleNumber;
 
         public string Id => id;
         public string DisplayName => displayName;
+        public string RuleText => ruleText;
+        public int RuleNumber => ruleNumber;
         public bool IsTerminal => isTerminal;
 
         // True for Rule 6 (FlippedPainting): target is resolved via MirrorPairTable at generation time.
@@ -38,7 +47,7 @@ namespace RuleGhost.Anomalies
         public void EditorInitialize(string newId, string newDisplayName, IEnumerable<TimeSlot> slots,
             bool terminal, bool mirrorPairing, bool paintingTarget,
             IEnumerable<ActionRequirement> required, IEnumerable<ActionRequirement> forbidden,
-            IEnumerable<PaintingWall> wallOptions = null)
+            IEnumerable<PaintingWall> wallOptions = null, string newRuleText = "", int newRuleNumber = 0)
         {
             id = newId;
             displayName = newDisplayName;
@@ -49,6 +58,8 @@ namespace RuleGhost.Anomalies
             requiredActions = new List<ActionRequirement>(required);
             forbiddenActions = new List<ActionRequirement>(forbidden);
             paintingWallOptions = wallOptions != null ? new List<PaintingWall>(wallOptions) : new List<PaintingWall>();
+            ruleText = newRuleText;
+            ruleNumber = newRuleNumber;
         }
 #endif
     }

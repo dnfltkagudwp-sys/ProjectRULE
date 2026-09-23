@@ -133,6 +133,24 @@ namespace RuleGhost.Anomalies
         private static TargetRef FirstTarget(IReadOnlyList<ActionRequirement> reqs) =>
             reqs.Count > 0 ? reqs[0].Target : default;
 
+        // Reverts one specific painting's texture swap back to its base material -- unlike
+        // ResetAll(), which reverts everything and is only ever called between rounds. Used for a
+        // required action's own visual payoff (e.g. PersonInLandscape's person disappearing once
+        // the player has turned away long enough) that has to happen mid-round, not at round end.
+        // Safe to call on a renderer that was never tinted (SetPropertyBlock(null) is a no-op then).
+        public void RevertTexture(PatrolSceneBindings bindings, TargetRef target)
+        {
+            var t = bindings.Resolve(target);
+            var renderer = t != null ? t.GetComponent<Renderer>() : null;
+            if (renderer == null)
+            {
+                return;
+            }
+
+            renderer.SetPropertyBlock(null);
+            tintedRenderers.Remove(renderer);
+        }
+
         private void SwapTexture(PatrolSceneBindings bindings, TargetRef target, System.Func<TargetRef, (string path, Vector4 st)?> lookup)
         {
             var variant = lookup(target);
@@ -212,7 +230,14 @@ namespace RuleGhost.Anomalies
             return ($"Assets/Art/Paintings/Landscape{target.Index}/Landscape{target.Index}_person_{suffix}.png", WestIdentityST);
         }
 
-        private void FlipPainting(PatrolSceneBindings bindings, TargetRef target)
+        // Public so PatrolRuntimeController can also call this for the player's OWN flip action
+        // (FlippedPainting's required MirrorTarget) -- the same 180-degree rotation either way,
+        // just a different target and a different reason. Flips again (back to original) if
+        // called twice on the same target, so callers that can fire more than once per round (a
+        // repeat E-key press) must guard against a second call themselves -- see
+        // PatrolRuntimeController.HandleAnomalyAction, which only calls this once per target via
+        // PatrolProgress.HasPerformedAction.
+        public void FlipPainting(PatrolSceneBindings bindings, TargetRef target)
         {
             var t = bindings.Resolve(target);
             if (t == null)
@@ -225,7 +250,16 @@ namespace RuleGhost.Anomalies
             {
                 rotationOverrides[t] = t.localRotation;
             }
-            t.localRotation *= Quaternion.Euler(0f, 0f, 180f);
+            t.localRotation *= Quaternion.AngleAxis(180f, PaintingOrientation.DepthAxis(target.Wall));
+        }
+
+        // Called when the player checks the inspection door while InspectionDoorAjar is active --
+        // PatrolEvaluator's CloseInspectionDoorFully is satisfied by a plain visit (see its class
+        // comment), so this is what actually moves the hinge back instead of leaving it visually
+        // ajar after a round the player otherwise passed.
+        public void CloseInspectionDoor()
+        {
+            SetDoorAngle(DoorClosedAngle);
         }
 
         private static void SetDoorAngle(float angle)

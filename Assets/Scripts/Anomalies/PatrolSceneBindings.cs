@@ -14,6 +14,7 @@ namespace RuleGhost.Anomalies
         [SerializeField] private Transform thermometer;
         [SerializeField] private Transform inspectionDoor;
         [SerializeField] private Transform entranceMarker;
+        [SerializeField] private Transform guardRoomReturn;
 
         public void Configure(Transform[] north, Transform[] west, Transform[] east, Transform thermometerTransform,
             Transform inspectionDoorTransform, Transform entranceMarkerTransform)
@@ -24,6 +25,15 @@ namespace RuleGhost.Anomalies
             thermometer = thermometerTransform;
             inspectionDoor = inspectionDoorTransform;
             entranceMarker = entranceMarkerTransform;
+        }
+
+        // Separate from Configure (rather than extending its parameter list) since
+        // GuardRoomReturnTrigger is wired up later, by AttachGuardRoomReturnTrigger, on top of a
+        // scene Configure already built -- matches this project's convention of layering
+        // additional wiring onto an existing scene instead of re-running the original builder.
+        public void ConfigureGuardRoomReturn(Transform guardRoomReturnTransform)
+        {
+            guardRoomReturn = guardRoomReturnTransform;
         }
 
         public Transform ResolvePainting(PaintingWall wall, int index)
@@ -53,6 +63,7 @@ namespace RuleGhost.Anomalies
                 TargetKind.Thermometer => thermometer,
                 TargetKind.InspectionDoor => inspectionDoor,
                 TargetKind.EntranceDoor => entranceMarker,
+                TargetKind.GuardRoomReturn => guardRoomReturn,
                 _ => null
             };
         }

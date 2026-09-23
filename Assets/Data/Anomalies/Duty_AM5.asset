@@ -16,6 +16,16 @@ MonoBehaviour:
   slot: 1
   requiredActions:
   - Target:
+      Kind: 1
+      Wall: 0
+      Index: 0
+    Action: 17
+  - Target:
+      Kind: 2
+      Wall: 0
+      Index: 0
+    Action: 18
+  - Target:
       Kind: 3
       Wall: 0
       Index: 0
@@ -26,3 +36,5 @@ MonoBehaviour:
       Wall: 0
       Index: 0
     Action: 9
+  ruleText: "2. \uC624\uC804 5\uC2DC\uAC00 \uB418\uBA74 \uC628\uC2B5\uB3C4\uACC4\uC640 \uC810\uAC80\uBB38\uC744 \uD655\uC778\uD55C \uB4A4 \uB9C8\uC9C0\uB9C9\uC73C\uB85C \uB85C\uBE44 \uCD9C\uC785\uBB38\uC774 \uB2EB\uD600 \uC788\uB294\uC9C0 \uD655\uC778\uD55C\uB2E4. \uB2E8, \uB2E4\uB978 \uC218\uCE59\uC774 \uC989\uC2DC \uBCF5\uADC0\uB97C \uC9C0\uC2DC\uD558\uBA74 \uADF8 \uC218\uCE59\uC744 \uC6B0\uC120\uD55C\uB2E4."
+  ruleNumber: 2

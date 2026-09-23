@@ -28,5 +28,39 @@ namespace RuleGhost.Anomalies
 
             return Vector3.Angle(forward, toTarget);
         }
+
+        // Angle alone can't tell "facing/not-facing" from "facing, but through a wall or the
+        // center statue" -- a straight line between the player and the target has to be clear (or
+        // only blocked by the target/player's own collider) and within a sane distance, or the
+        // facing rule shouldn't be able to hold at all. Mirrors GazeSensor.IsWithinGazeCone's own
+        // self/player exemption, just without a cone-angle component (facing direction is checked
+        // separately, via HorizontalAngleToTarget).
+        public static bool HasClearLineOfSight(Camera camera, Transform target, Transform playerRoot, float maxDistance)
+        {
+            if (camera == null || target == null)
+            {
+                return false;
+            }
+
+            Vector3 camPos = camera.transform.position;
+            float distance = Vector3.Distance(camPos, target.position);
+            if (distance < 0.001f || distance > maxDistance)
+            {
+                return false;
+            }
+
+            if (Physics.Linecast(camPos, target.position, out var hit))
+            {
+                bool hitIsTarget = hit.transform == target || hit.transform.IsChildOf(target);
+                bool hitIsPlayer = playerRoot != null &&
+                    (hit.transform == playerRoot || hit.transform.IsChildOf(playerRoot));
+                if (!hitIsTarget && !hitIsPlayer)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
     }
 }

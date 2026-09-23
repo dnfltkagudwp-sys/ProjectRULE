@@ -82,6 +82,56 @@ namespace RuleGhost.Anomalies.Tests
         }
 
         [Test]
+        public void FacingSensor_ClearLineOfSight_WithinRange_ReturnsTrue()
+        {
+            var camera = MakeCamera(Vector3.zero, 0f);
+            var target = Spawn("Target", new Vector3(0f, 0f, 5f));
+
+            bool result = FacingSensor.HasClearLineOfSight(camera, target.transform, playerRoot: null, maxDistance: 15f);
+
+            Assert.IsTrue(result);
+        }
+
+        [Test]
+        public void FacingSensor_BeyondMaxDistance_ReturnsFalse()
+        {
+            var camera = MakeCamera(Vector3.zero, 0f);
+            var target = Spawn("Target", new Vector3(0f, 0f, 20f));
+
+            bool result = FacingSensor.HasClearLineOfSight(camera, target.transform, playerRoot: null, maxDistance: 15f);
+
+            Assert.IsFalse(result);
+        }
+
+        [Test]
+        public void FacingSensor_BlockedByWall_ReturnsFalse()
+        {
+            var camera = MakeCamera(Vector3.zero, 0f);
+            var target = Spawn("Target", new Vector3(0f, 0f, 5f));
+
+            var wall = Spawn("Wall", new Vector3(0f, 0f, 2.5f));
+            wall.AddComponent<BoxCollider>().size = new Vector3(3f, 3f, 0.2f);
+
+            bool result = FacingSensor.HasClearLineOfSight(camera, target.transform, playerRoot: null, maxDistance: 15f);
+
+            Assert.IsFalse(result);
+        }
+
+        [Test]
+        public void FacingSensor_BlockedByPlayerCollider_StillReturnsTrue()
+        {
+            var camera = MakeCamera(Vector3.zero, 0f);
+            var target = Spawn("Target", new Vector3(0f, 0f, 5f));
+
+            var playerRoot = Spawn("PlayerRoot", new Vector3(0f, 0f, 2.5f));
+            playerRoot.AddComponent<BoxCollider>().size = new Vector3(3f, 3f, 0.2f);
+
+            bool result = FacingSensor.HasClearLineOfSight(camera, target.transform, playerRoot: playerRoot.transform, maxDistance: 15f);
+
+            Assert.IsTrue(result);
+        }
+
+        [Test]
         public void GazeSensor_WithinConeAndRangeAndUnoccluded_ReturnsTrue()
         {
             var camera = MakeCamera(Vector3.zero, 0f);

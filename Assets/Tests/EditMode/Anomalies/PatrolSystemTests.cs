@@ -66,7 +66,7 @@ namespace RuleGhost.Anomalies.Tests
 
             f.HighHumidity = MakeAnomaly("HighHumidity", new[] { TimeSlot.AM5 }, false, false, false,
                 Array.Empty<ActionRequirement>(),
-                new[] { new ActionRequirement(TargetRef.Simple(TargetKind.Thermometer), ActionTag.TouchThermostat) });
+                new[] { new ActionRequirement(TargetRef.Simple(TargetKind.Thermometer), ActionTag.AdjustThermostat) });
 
             f.DoorAjar = MakeAnomaly("InspectionDoorAjar", new[] { TimeSlot.AM5 }, false, false, false,
                 new[] { new ActionRequirement(TargetRef.Simple(TargetKind.InspectionDoor), ActionTag.CloseInspectionDoorFully) },
@@ -200,6 +200,52 @@ namespace RuleGhost.Anomalies.Tests
             var wideOpen = AnomalyTargetResolver.Resolve(f.DoorWideOpen, rng);
 
             bool canAdd = ConflictValidator.CanAdd(wideOpen, new List<IActionConstraint> { f.DutyAm5 }, f.RuleSet, out var reason);
+
+            Assert.IsTrue(canAdd, reason);
+        }
+
+        [Test]
+        public void ConflictValidator_ConditionalSameTarget_Denied()
+        {
+            var f = BuildFixture();
+            var sharedTarget = TargetRef.Painting(PaintingWall.North, 1);
+
+            var ruleSet = ScriptableObject.CreateInstance<CombinationRuleSet>();
+            ruleSet.EditorSetRules(new[]
+            {
+                new CombinationRule { AnomalyA = f.EyesOpenPortrait, AnomalyB = f.SoundFromExhibit, State = CombinationState.Conditional }
+            });
+
+            var eyesOpen = new ResolvedAnomaly(f.EyesOpenPortrait, Array.Empty<ActionRequirement>(),
+                new[] { new ActionRequirement(sharedTarget, ActionTag.MakeEyeContact) });
+            var sound = new ResolvedAnomaly(f.SoundFromExhibit,
+                new[] { new ActionRequirement(sharedTarget, ActionTag.FaceExhibit) },
+                new[] { new ActionRequirement(sharedTarget, ActionTag.ShowBackToExhibit) });
+
+            bool canAdd = ConflictValidator.CanAdd(sound, new List<IActionConstraint> { f.DutyAm5, eyesOpen }, ruleSet, out var reason);
+
+            Assert.IsFalse(canAdd);
+            StringAssert.Contains("CONDITIONAL denied", reason);
+        }
+
+        [Test]
+        public void ConflictValidator_ConditionalDifferentTarget_Allowed()
+        {
+            var f = BuildFixture();
+
+            var ruleSet = ScriptableObject.CreateInstance<CombinationRuleSet>();
+            ruleSet.EditorSetRules(new[]
+            {
+                new CombinationRule { AnomalyA = f.EyesOpenPortrait, AnomalyB = f.SoundFromExhibit, State = CombinationState.Conditional }
+            });
+
+            var eyesOpen = new ResolvedAnomaly(f.EyesOpenPortrait, Array.Empty<ActionRequirement>(),
+                new[] { new ActionRequirement(TargetRef.Painting(PaintingWall.North, 1), ActionTag.MakeEyeContact) });
+            var sound = new ResolvedAnomaly(f.SoundFromExhibit,
+                new[] { new ActionRequirement(TargetRef.Painting(PaintingWall.East, 2), ActionTag.FaceExhibit) },
+                new[] { new ActionRequirement(TargetRef.Painting(PaintingWall.East, 2), ActionTag.ShowBackToExhibit) });
+
+            bool canAdd = ConflictValidator.CanAdd(sound, new List<IActionConstraint> { f.DutyAm5, eyesOpen }, ruleSet, out var reason);
 
             Assert.IsTrue(canAdd, reason);
         }
