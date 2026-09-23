@@ -36,6 +36,11 @@ namespace RuleGhost.Anomalies
         // Confirmed via playtest to feel right at 2s -- a facing rule (TurnAwayFromExhibit,
         // FaceExhibit, ShowBackToExhibit) needs a real, sustained turn, not a quick glance.
         public const float FacingDwellSeconds = 2f;
+        // PersonInLandscape's own forbidden "kept looking instead of turning away" duration --
+        // longer than FacingDwellSeconds on purpose: the player needs real time to notice the
+        // person appeared and react, not an instant fail the moment they're first looking at it
+        // (which is also how they discover the anomaly in the first place).
+        public const float KeepFacingForbiddenDwellSeconds = 4f;
 
         private readonly Dictionary<string, float> eyeContactDwell = new();
         private readonly Dictionary<string, float> requiredFacingDwell = new();
@@ -158,6 +163,11 @@ namespace RuleGhost.Anomalies
             }
         }
 
+        // Two distinct forbidden facing rules share this method: ShowBackToExhibit (SoundFromExhibit
+        // -- don't let your back be to it) and FaceExhibit-as-forbidden (PersonInLandscape -- don't
+        // keep looking at it instead of turning away). Same shape (an angle threshold sustained for
+        // a dwell), different angle/threshold/duration, so they're handled as one method with a
+        // per-tag branch rather than two near-identical ones.
         private void TickForbiddenFacing(float deltaTime, Camera camera, Transform playerRoot,
             PatrolSceneBindings bindings, ResolvedAnomaly anomaly)
         {
@@ -168,9 +178,23 @@ namespace RuleGhost.Anomalies
 
             foreach (var forbid in anomaly.ForbiddenActions)
             {
-                if (forbid.Action != ActionTag.ShowBackToExhibit)
+                float angleThreshold;
+                bool angleIsMinimum; // true: violating when angle >= threshold; false: angle <= threshold
+                float dwellThreshold;
+                switch (forbid.Action)
                 {
-                    continue;
+                    case ActionTag.ShowBackToExhibit:
+                        angleThreshold = FrontHemisphereAngleThreshold;
+                        angleIsMinimum = true;
+                        dwellThreshold = FacingDwellSeconds;
+                        break;
+                    case ActionTag.FaceExhibit:
+                        angleThreshold = TowardAngleThreshold;
+                        angleIsMinimum = false;
+                        dwellThreshold = KeepFacingForbiddenDwellSeconds;
+                        break;
+                    default:
+                        continue;
                 }
 
                 var target = bindings.Resolve(forbid.Target);
@@ -180,19 +204,19 @@ namespace RuleGhost.Anomalies
                 }
 
                 float angle = FacingSensor.HorizontalAngleToTarget(camera, target);
-                bool violating = angle >= FrontHemisphereAngleThreshold &&
-                    FacingSensor.HasClearLineOfSight(camera, target, playerRoot, MaxFacingDistance);
+                bool angleHolds = angleIsMinimum ? angle >= angleThreshold : angle <= angleThreshold;
+                bool violating = angleHolds && FacingSensor.HasClearLineOfSight(camera, target, playerRoot, MaxFacingDistance);
 
                 float dwell = forbiddenFacingDwell.GetValueOrDefault(anomaly.Id, 0f);
                 dwell = violating ? dwell + deltaTime : 0f;
                 forbiddenFacingDwell[anomaly.Id] = dwell;
 
-                if (dwell >= FacingDwellSeconds)
+                if (dwell >= dwellThreshold)
                 {
                     violatedForbidden.Add(anomaly.Id);
                 }
 
-                return; // at most one ShowBackToExhibit entry per anomaly currently
+                return; // at most one forbidden-facing entry per anomaly currently
             }
         }
 

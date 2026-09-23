@@ -82,7 +82,15 @@ namespace RuleGhost.EditorTools
             var personInLandscape = CreateAnomaly("PersonInLandscape", "사람이 나타난 풍경화",
                 slots: new[] { TimeSlot.AM1 }, terminal: false, mirror: false, paintingTarget: true,
                 required: new[] { new ActionRequirement(TargetPlaceholder.AnyPainting, ActionTag.TurnAwayFromExhibit) },
-                forbidden: new[] { new ActionRequirement(TargetPlaceholder.AnyPainting, ActionTag.RecheckExhibit) },
+                // FaceExhibit here means "kept looking at it instead of turning away" (see
+                // ObservationRuleMonitor.TickForbiddenFacing) -- a longer dwell than the required
+                // TurnAwayFromExhibit's own 2s, so the player has real time to notice and react
+                // before it counts as ignoring the rule outright.
+                forbidden: new[]
+                {
+                    new ActionRequirement(TargetPlaceholder.AnyPainting, ActionTag.RecheckExhibit),
+                    new ActionRequirement(TargetPlaceholder.AnyPainting, ActionTag.FaceExhibit)
+                },
                 wallOptions: new[] { PaintingWall.West },
                 ruleText: "4. 풍경화에 사람이 보인다면 즉시 등을 돌리고 잠시 기다린다.",
                 ruleNumber: 4);

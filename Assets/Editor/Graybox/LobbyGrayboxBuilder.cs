@@ -130,7 +130,10 @@ namespace RuleGhost.EditorTools
         private static (Transform[] north, Transform[] west, Transform[] east) BuildPaintings(Transform parent)
         {
             var matPainting = GetOrCreateMaterial("Painting", new Color(0.55f, 0.35f, 0.2f));
-            const float paintW = 1.2f, paintH = 1.6f, paintT = 0.05f, y = 2.5f;
+            // y was 2.5 -- lowered partway toward player eye height (see BuildPlayer's own camera
+            // height, raised partway the other way to meet it) so looking a north-wall portrait in
+            // the eye doesn't need as steep an upward tilt. See AdjustPortraitEyeLevel.cs.
+            const float paintW = 1.2f, paintH = 1.6f, paintT = 0.05f, y = 2.35f;
 
             var north = new Transform[3];
             var west = new Transform[3];
@@ -240,13 +243,24 @@ namespace RuleGhost.EditorTools
             var cc = player.AddComponent<CharacterController>();
             cc.center = new Vector3(0, 1f, 0);
             cc.height = 2f;
-            cc.radius = 0.4f;
+            // Was 0.4 -- slightly slimmer so the player catches on corners/furniture/door frames
+            // less while moving through tight spots, which was reading as "the room feels cramped"
+            // as much as the room's actual dimensions were. DecorateGuardRoom's own door-clearance
+            // math assumed 0.4; a smaller radius only adds clearance there, never removes it.
+            cc.radius = 0.35f;
 
             var camGO = new GameObject("Main Camera");
             camGO.transform.SetParent(player.transform, false);
-            camGO.transform.localPosition = new Vector3(0, 1.6f, 0);
+            // Was 1.6 (average human eye height) -- raised partway toward the north-wall portraits'
+            // own eye level (~2.74m via their EyeAnchor) so looking one in the eye doesn't need as
+            // steep an upward tilt; BuildPaintings' own painting height (below) was lowered to meet
+            // it partway from the other side, see AdjustPortraitEyeLevel.cs.
+            camGO.transform.localPosition = new Vector3(0, 1.75f, 0);
             camGO.tag = "MainCamera";
             var playerCamera = camGO.AddComponent<Camera>();
+            // Was the Camera component's own default (60) -- a wider FOV shows more of the room at
+            // once without changing its actual size, another lever against the same "cramped" feel.
+            playerCamera.fieldOfView = 68f;
             camGO.AddComponent<AudioListener>();
 
             // Solid black instead of the default skybox -- the floor-to-
@@ -268,7 +282,10 @@ namespace RuleGhost.EditorTools
             var flashlight = flashGO.AddComponent<Light>();
             flashlight.type = LightType.Spot;
             flashlight.color = new Color(0.92f, 0.95f, 1f);
-            flashlight.intensity = 13f;
+            // Was 13 -- readable at range but blew out painting detail to white up close (inverse-
+            // square falloff means close-range brightness scales with intensity directly). Lowered,
+            // not the angle/range, since only the up-close blowout was reported as a problem.
+            flashlight.intensity = 8f;
             flashlight.range = 10f;
             flashlight.spotAngle = 40f;
             flashlight.innerSpotAngle = 20f;

@@ -139,6 +139,10 @@ namespace RuleGhost.EditorTools
             leaf.transform.localPosition = new Vector3(0f, DoorLeafHeight / 2f, DoorLeafWidth / 2f);
             leaf.transform.localScale = new Vector3(DoorLeafThickness, DoorLeafHeight, DoorLeafWidth);
             leaf.GetComponent<Renderer>().sharedMaterial = mat;
+            // Solid by default (closed) so the door actually blocks passage -- DoorTestInteraction
+            // itself now toggles this to a trigger only while the leaf is actively swinging, so it
+            // doesn't shove/snag the player who opened it from close range without losing the
+            // "closed door blocks you" behavior at rest.
 
             // Same walk-up-and-press-E toggle as the inspection door (DoorTestInteraction) --
             // defaults (100 degree open angle, 2.5m range) already match what's wanted here: a

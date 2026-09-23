@@ -17,6 +17,14 @@ namespace RuleGhost.Debugging
         private bool isOpen;
         private float targetAngle;
         private Transform player;
+        private Collider leafCollider;
+
+        private void Awake()
+        {
+            // The leaf (a child of this hinge) carries the actual Collider -- cached once so Update
+            // doesn't need GetComponentInChildren every frame.
+            leafCollider = GetComponentInChildren<Collider>();
+        }
 
         private void Update()
         {
@@ -40,6 +48,16 @@ namespace RuleGhost.Debugging
             var current = transform.localRotation.eulerAngles.y;
             float next = Mathf.MoveTowardsAngle(current, targetAngle, rotateSpeed * Time.deltaTime);
             transform.localRotation = Quaternion.Euler(0f, next, 0f);
+
+            if (leafCollider != null)
+            {
+                // Solid at rest (closed OR fully open) so the door still actually blocks passage
+                // and reads as a real object; a trigger only while actively swinging, since a
+                // Transform-driven collider (no Rigidbody) doesn't push the CharacterController out
+                // of its way when it sweeps into the player standing close enough to have opened
+                // it -- it just shoves/snags them instead.
+                leafCollider.isTrigger = !Mathf.Approximately(next, targetAngle);
+            }
         }
     }
 }

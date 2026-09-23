@@ -161,7 +161,10 @@ namespace RuleGhost.EditorTools
         {
             var group = new GameObject("Placards");
             group.transform.SetParent(root, false);
-            const float y = 1.5f;
+            // Was 1.5 -- lowered by the same 0.15 the paintings themselves moved down (see
+            // LobbyGrayboxBuilder's paintH constant / AdjustPortraitEyeLevel.cs) so the gap between
+            // painting bottom and placard stays the same as before instead of shrinking.
+            const float y = 1.35f;
             const float w = 0.35f, h = 0.15f, t = 0.02f;
 
             float[] northX = { -4f, 0f, 4f };

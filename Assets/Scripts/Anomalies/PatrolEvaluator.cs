@@ -18,11 +18,13 @@ namespace RuleGhost.Anomalies
     //    (HighHumidity's AdjustThermostat).
     //  - a continuous "was the player looking at / facing this the right way" signal
     //    (ObservationReport, built by ObservationRuleMonitor from the player's camera every frame)
-    //    for gaze/direction Anomaly tags: MakeEyeContact (EyesOpenPortrait), TurnAwayFromExhibit/
-    //    FaceExhibit (required) and ShowBackToExhibit (forbidden) for PersonInLandscape/
-    //    SoundFromExhibit.
+    //    for gaze/direction Anomaly tags: MakeEyeContact (EyesOpenPortrait); TurnAwayFromExhibit
+    //    (required, PersonInLandscape) with FaceExhibit as its own forbidden counterpart ("kept
+    //    looking instead" -- a longer dwell than the required side, see
+    //    ObservationRuleMonitor.KeepFacingForbiddenDwellSeconds); and FaceExhibit (required)/
+    //    ShowBackToExhibit (forbidden) for SoundFromExhibit.
     //  - a count-based signal (PatrolProgress.VisitCount) for RecheckExhibit (PersonInLandscape's
-    //    forbidden action): an E-key re-interaction check, distinct from the plain visit-based
+    //    other forbidden action): an E-key re-interaction check, distinct from the plain visit-based
     //    path because the target is already mandatory to visit once (every painting per
     //    Duty_AM1) -- "don't recheck it" can only mean "don't visit it a second time."
     //  - a loose gaze-scan signal (observedTargets, from LooseObservationTracker) for

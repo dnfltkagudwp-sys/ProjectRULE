@@ -75,6 +75,11 @@ namespace RuleGhost.Anomalies
         // PersonInLandscape's texture revert) -- see HandleAnomalyRequiredSatisfied.
         private readonly HashSet<string> notifiedSatisfactions = new();
 
+        // Time.time when the current round started -- guards against the round-start teleport
+        // itself immediately re-firing GuardRoomReturn (see RecordVisit), since the player now
+        // spawns literally inside that trigger's volume.
+        private float roundStartTime;
+
         private void Awake()
         {
             Instance = this;
@@ -171,6 +176,7 @@ namespace RuleGhost.Anomalies
             notifiedViolations.Clear();
             notifiedSatisfactions.Clear();
             terminalAbortState.ResetForRound();
+            roundStartTime = Time.time;
 
             anomalyApplier.ResetAll(sceneBindings);
             observationMonitor.ResetAll();
@@ -217,6 +223,17 @@ namespace RuleGhost.Anomalies
 
             if (target.Kind == TargetKind.GuardRoomReturn)
             {
+                // The player now spawns literally inside GuardRoomReturnTrigger's own volume (see
+                // TeleportPlayerToGuardRoom), so re-enabling the CharacterController there re-fires
+                // OnTriggerEnter the same frame the round starts -- a genuine walk back out and in
+                // takes far longer than this window, so anything this soon after StartPatrolAt is
+                // that spawn artifact, not a real return.
+                const float SpawnGraceSeconds = 1f;
+                if (Time.time - roundStartTime < SpawnGraceSeconds)
+                {
+                    return;
+                }
+
                 TryCompletePatrol();
                 return;
             }
@@ -403,22 +420,15 @@ namespace RuleGhost.Anomalies
             Debug.Log($"[PatrolRuntimeController] Patrol {CurrentProfile.PatrolIndex} -- forbidden action detected live ({violatorId}).");
         }
 
-        // Meters, +X (away from the guard room, which sits at the lobby's negative-X corner --
-        // see DecorateGuardRoom/AttachGuardRoomReturnTrigger) applied to the GuardRoomReturn
-        // binding's own position, so the round-start spawn lands just outside its return-trigger
-        // volume instead of inside it. Spawning literally on top of that trigger would fire
-        // GuardRoomReturn/TryCompletePatrol the instant the round starts (evaluating a completely
-        // empty PatrolProgress) -- harmless (nothing's missing except everything, so the patrol
-        // just shows the "incomplete" notice and keeps going), but confusing to see, and fragile
-        // wrt exactly when Unity re-fires OnTriggerEnter for a CharacterController toggled back on
-        // while already overlapping a trigger.
-        private const float GuardRoomSpawnLobbyOffset = 4f;
-
         // Every round starts "경비실을 나와" per the design doc -- without this the player just
         // stays wherever the previous round ended (or, on the very first round, wherever
         // LobbyGrayboxBuilder's one-time BuildPlayer placement happened to be), neither of which is
         // the guard room. Reuses the already-bound GuardRoomReturn target instead of a new spawn
         // marker, matching PatrolSceneBindings' existing TargetRef -> Transform convention.
+        //
+        // This lands the player literally inside GuardRoomReturnTrigger's own volume (it covers
+        // most of the small guard room) -- see RecordVisit's SpawnGraceSeconds guard for why that
+        // doesn't immediately re-end the round it just started.
         private static void TeleportPlayerToGuardRoom(PatrolSceneBindings bindings)
         {
             var spawn = bindings.Resolve(TargetRef.Simple(TargetKind.GuardRoomReturn));
@@ -434,8 +444,7 @@ namespace RuleGhost.Anomalies
             }
 
             controller.enabled = false;
-            controller.transform.position =
-                new Vector3(spawn.position.x + GuardRoomSpawnLobbyOffset, 0f, spawn.position.z);
+            controller.transform.position = new Vector3(spawn.position.x, 0f, spawn.position.z);
             controller.enabled = true;
         }
 
