@@ -15,10 +15,14 @@ namespace RuleGhost.EditorTools
     {
         private const string ScenePath = "Assets/Scenes/Lobby_Graybox.unity";
 
-        // The 3m-wide opening in Wall_West (z -9.5..-6.5, wall centered x=-7) that connects the
-        // lobby to the guard room -- see LobbyGrayboxBuilder.BuildWalls.
-        private const float WallX = -7f;
-        private const float OpeningSouthZ = -9.5f;
+        // The 3m-wide opening in Wall_West that connects the lobby to the guard room -- see
+        // LobbyGrayboxBuilder.BuildWalls. Updated for the 2026-09-28 lobby resize, which shifted
+        // the west wall (and the guard room attached to it) by (-2,-3); the opening is now
+        // z -12.5..-9.5, wall centered x=-9 (see ResizeLobby.cs). NOT re-run as part of that
+        // resize -- the guard room's door/desk/chair were moved as a rigid group instead, since
+        // re-running this would rebuild them from scratch and lose the later imported-model swap.
+        private const float WallX = -9f;
+        private const float OpeningSouthZ = -12.5f;
 
         // Human-scale single interior door (was 1.3 x 2.6 x 0.08 -- read as a warehouse shutter,
         // not a door; 0.95 x 2.1 read right but caught on the player in practice -- the door

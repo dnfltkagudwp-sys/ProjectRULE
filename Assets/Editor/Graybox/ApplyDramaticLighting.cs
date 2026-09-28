@@ -91,18 +91,21 @@ namespace RuleGhost.EditorTools
             // wall wash -- a single wide light either blew out the nearest
             // painting or left the rest of the row dark depending on angle.
             // Real gallery lighting is per-artwork anyway.
+            // Updated for the 2026-09-28 lobby resize (14x20m -> 18x26m, side paintings now
+            // 6.5m apart instead of 5m) -- see ResizeLobby.cs. Each spot keeps the same inset from
+            // its painting (north: 1.25m, west/east: 1.45m) it always had.
             float[] northX = { -4f, 0f, 4f };
             foreach (float x in northX)
             {
-                CreateSpotAt(rig.transform, $"Spot_Painting_North_{x}", new Vector3(x, 4.5f, 8.7f), new Vector3(x, 2.5f, 9.95f),
+                CreateSpotAt(rig.transform, $"Spot_Painting_North_{x}", new Vector3(x, 4.5f, 11.7f), new Vector3(x, 2.5f, 12.95f),
                     PaintingWarm, intensity: 7f, range: 4.5f, spotAngle: 45f);
             }
-            float[] sideZ = { -5f, 0f, 5f };
+            float[] sideZ = { -6.5f, 0f, 6.5f };
             foreach (float z in sideZ)
             {
-                CreateSpotAt(rig.transform, $"Spot_Painting_West_{z}", new Vector3(-5.5f, 4.5f, z), new Vector3(-6.95f, 2.5f, z),
+                CreateSpotAt(rig.transform, $"Spot_Painting_West_{z}", new Vector3(-7.5f, 4.5f, z), new Vector3(-8.95f, 2.5f, z),
                     PaintingWarm, intensity: 7f, range: 4.5f, spotAngle: 45f);
-                CreateSpotAt(rig.transform, $"Spot_Painting_East_{z}", new Vector3(5.5f, 4.5f, z), new Vector3(6.95f, 2.5f, z),
+                CreateSpotAt(rig.transform, $"Spot_Painting_East_{z}", new Vector3(7.5f, 4.5f, z), new Vector3(8.95f, 2.5f, z),
                     PaintingWarm, intensity: 7f, range: 4.5f, spotAngle: 45f);
             }
 
@@ -113,14 +116,16 @@ namespace RuleGhost.EditorTools
             // them a plain, dim, cool utility point light with no dramatic
             // spot cone and no gallery-can housing, instead of a featured
             // spotlight.
-            CreateUtilityPoint(rig.transform, "Utility_InspectionDoor", new Vector3(6f, 3.2f, 9f), intensity: 1.1f, range: 6f);
-            CreateUtilityPoint(rig.transform, "Utility_Thermometer", new Vector3(-5.8f, 2.8f, 9.5f), intensity: 0.9f, range: 5f);
+            CreateUtilityPoint(rig.transform, "Utility_InspectionDoor", new Vector3(8f, 3.2f, 12f), intensity: 1.1f, range: 6f);
+            CreateUtilityPoint(rig.transform, "Utility_Thermometer", new Vector3(-5.8f, 2.8f, 12.5f), intensity: 0.9f, range: 5f);
 
             // Guard room reads as a slightly brighter, calmer space than the gallery -- not a
             // saturated orange glow (that read as a different building; see GuardWarm's comment).
+            // Position matches the guard room's own post-resize location (shifted -2,-3 with the
+            // west wall it's attached to -- see ResizeLobby.cs).
             var guardLightGO = new GameObject("Point_GuardRoom");
             guardLightGO.transform.SetParent(rig.transform, false);
-            guardLightGO.transform.position = new Vector3(-8.7f, 2f, -8f);
+            guardLightGO.transform.position = new Vector3(-10.7f, 2f, -11f);
             var guardLight = guardLightGO.AddComponent<Light>();
             guardLight.type = LightType.Point;
             guardLight.color = GuardWarm;
@@ -135,9 +140,9 @@ namespace RuleGhost.EditorTools
             var rails = new GameObject("LightRails");
             rails.transform.SetParent(rig.transform, false);
             AddRail(rails.transform, "Rail_Statue", new Vector3(0f, 4.82f, 0f), new Vector3(0.07f, 0.05f, 9.5f));
-            AddRail(rails.transform, "Rail_North", new Vector3(0f, 4.62f, 8.5f), new Vector3(9f, 0.05f, 0.07f));
-            AddRail(rails.transform, "Rail_West", new Vector3(-5.6f, 4.62f, 0f), new Vector3(0.07f, 0.05f, 11f));
-            AddRail(rails.transform, "Rail_East", new Vector3(5.6f, 4.62f, 0f), new Vector3(0.07f, 0.05f, 11f));
+            AddRail(rails.transform, "Rail_North", new Vector3(0f, 4.62f, 11.5f), new Vector3(9f, 0.05f, 0.07f));
+            AddRail(rails.transform, "Rail_West", new Vector3(-7.6f, 4.62f, 0f), new Vector3(0.07f, 0.05f, 14f));
+            AddRail(rails.transform, "Rail_East", new Vector3(7.6f, 4.62f, 0f), new Vector3(0.07f, 0.05f, 14f));
 
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
             EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene());

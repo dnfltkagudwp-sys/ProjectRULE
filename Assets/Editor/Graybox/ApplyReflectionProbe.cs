@@ -34,13 +34,24 @@ namespace RuleGhost.EditorTools
                 Debug.LogError("[ApplyReflectionProbe] Could not find M_Floor material.");
             }
 
+            // ApplyDramaticLighting darkens RenderSettings.ambientLight/ambientMode, but never
+            // touches RenderSettings.skybox itself -- any ray escaping the room through the
+            // entrance gap (or now, transparent glass -- see MakeGlassTransparent.cs) still hit
+            // Unity's default procedural sky and baked it straight into this probe, showing up as
+            // a bright sun/sky reflection on the floor and glass despite the room reading as dark
+            // everywhere else. There's no exterior built for this level -- the museum is a closed
+            // box at night -- so there's nothing a skybox should ever contribute here.
+            RenderSettings.skybox = null;
+
             var existing = GameObject.Find("LobbyReflectionProbe");
             if (existing != null) Object.DestroyImmediate(existing);
 
             var probeGO = new GameObject("LobbyReflectionProbe");
             var probe = probeGO.AddComponent<ReflectionProbe>();
             probe.mode = UnityEngine.Rendering.ReflectionProbeMode.Baked;
-            probe.size = new Vector3(16f, 5.2f, 22f);
+            // Room + 2m padding each axis (was 14x20 -> 16x22; now 18x26 after the 2026-09-28
+            // resize, see ResizeLobby.cs), height unchanged (room height 5m + 0.2m padding).
+            probe.size = new Vector3(20f, 5.2f, 28f);
             probeGO.transform.position = new Vector3(0f, 1.5f, 0f);
             probe.boxProjection = true;
             probe.resolution = 128;

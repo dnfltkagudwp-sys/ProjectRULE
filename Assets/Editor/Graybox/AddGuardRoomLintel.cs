@@ -14,15 +14,19 @@ namespace RuleGhost.EditorTools
     // ceiling height, closing it the way a real doorway lintel would.
     public static class AddGuardRoomLintel
     {
+        // Superseded by LobbyGrayboxBuilder.BuildStructure, which now builds this lintel directly
+        // -- kept only as historical reference. Constants updated for the 2026-09-28 lobby resize
+        // (see ResizeLobby.cs, which repositioned the live GuardRoom_Doorway_Lintel object
+        // directly instead of re-running this).
         private const string ScenePath = "Assets/Scenes/Lobby_Graybox.unity";
-        private const float HalfWidth = 7f;
+        private const float HalfWidth = 9f;
         private const float WallThickness = 0.2f;
         private const float Height = 5f;
         private const float GuardRoomHeight = 3f;
 
-        // Doorway gap in Wall_West: z -9.5..-6.5 (see LobbyGrayboxBuilder.BuildWalls).
-        private const float DoorZMin = -9.5f;
-        private const float DoorZMax = -6.5f;
+        // Doorway gap in Wall_West: z -12.5..-9.5 (see LobbyGrayboxBuilder.BuildWalls).
+        private const float DoorZMin = -12.5f;
+        private const float DoorZMax = -9.5f;
 
         [MenuItem("RuleGhost/Graybox/Add Guard Room Lintel")]
         public static void Run()

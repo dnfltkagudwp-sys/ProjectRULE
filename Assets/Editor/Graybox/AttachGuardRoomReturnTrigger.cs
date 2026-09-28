@@ -15,11 +15,12 @@ namespace RuleGhost.EditorTools
     {
         private const string ScenePath = "Assets/Scenes/Lobby_Graybox.unity";
 
-        // Guard room interior is roughly x in [-10.2,-7.1], z in [-9.5,-6.5] (3.2m square minus
-        // 0.2m wall thickness, centered at (-8.7,-8) -- see DecorateGuardRoom/
-        // GuardRoomFurnishingCheckTest). Sized/centered a bit inside those bounds so the trigger
-        // needs an actual step into the room, not just standing at the doorway threshold (x=-7).
-        private static readonly Vector3 TriggerCenter = new Vector3(-8.65f, 1f, -8f);
+        // Guard room interior is roughly x in [-12.2,-9.1], z in [-12.5,-9.5] (3.2m square minus
+        // 0.2m wall thickness, centered at (-10.7,-11) since the 2026-09-28 lobby resize shifted
+        // the whole guard room by (-2,-3) along with the west wall it's attached to -- see
+        // ResizeLobby.cs). Sized/centered a bit inside those bounds so the trigger needs an actual
+        // step into the room, not just standing at the doorway threshold (x=-9).
+        private static readonly Vector3 TriggerCenter = new Vector3(-10.65f, 1f, -11f);
         private static readonly Vector3 TriggerSize = new Vector3(2.6f, 2f, 2.6f);
 
         [MenuItem("RuleGhost/Anomalies/Attach Guard Room Return Trigger")]

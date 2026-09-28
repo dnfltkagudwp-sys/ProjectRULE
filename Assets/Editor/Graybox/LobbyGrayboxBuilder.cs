@@ -17,8 +17,12 @@ namespace RuleGhost.EditorTools
         private const string ScenePath = "Assets/Scenes/Lobby_Graybox.unity";
         private const string MaterialFolder = "Assets/_Graybox/Materials";
 
-        private const float HalfWidth = 7f;   // 14m
-        private const float HalfDepth = 10f;  // 20m
+        // 18x26m as of the 2026-09-28 resize (was 14x20m) -- see ResizeLobby.cs, which applied
+        // this directly to the live scene since Build() can't be safely re-run against it anymore
+        // (would wipe everything added since: imported furniture, the entrance door, death-sequence
+        // textures, dramatic lighting, ...). Kept in sync here for documentation/any future rebuild.
+        private const float HalfWidth = 9f;   // 18m
+        private const float HalfDepth = 13f;  // 26m
         private const float Height = 5f;
         private const float WallThickness = 0.2f;
 
@@ -147,7 +151,7 @@ namespace RuleGhost.EditorTools
                 north[i] = go.transform;
             }
 
-            float[] sideZ = { -5f, 0f, 5f };
+            float[] sideZ = { -6.5f, 0f, 6.5f };
             for (int i = 0; i < sideZ.Length; i++)
             {
                 var go = CreateBlock($"Painting_West_{i + 1}", parent, new Vector3(-HalfWidth + 0.05f, y, sideZ[i]),

@@ -13,8 +13,9 @@ namespace RuleGhost.EditorTools
     public static class AddMuseumDetails
     {
         private const string ScenePath = "Assets/Scenes/Lobby_Graybox.unity";
-        private const float HalfWidth = 7f;
-        private const float HalfDepth = 10f;
+        // Updated for the 2026-09-28 lobby resize (14x20m -> 18x26m) -- see ResizeLobby.cs.
+        private const float HalfWidth = 9f;
+        private const float HalfDepth = 13f;
         private const float Height = 5f;
         private const float WallThickness = 0.2f;
 
@@ -70,11 +71,11 @@ namespace RuleGhost.EditorTools
             float westX = -HalfWidth + WallThickness / 2f + protrusion / 2f;
             float eastX = HalfWidth - WallThickness / 2f - protrusion / 2f;
 
-            // Paintings sit at x -4/0/4 (north) and z -5/0/5 (west/east) --
+            // Paintings sit at x -4/0/4 (north) and z -6.5/0/6.5 (west/east) --
             // pilasters go at the midpoints between them.
             foreach (float x in new[] { -2f, 2f })
                 Block(group.transform, $"Pilaster_North_{x}", mat, new Vector3(x, midY, northZ), new Vector3(thickness, spanY, protrusion));
-            foreach (float z in new[] { -2.5f, 2.5f })
+            foreach (float z in new[] { -3.25f, 3.25f })
             {
                 Block(group.transform, $"Pilaster_West_{z}", mat, new Vector3(westX, midY, z), new Vector3(protrusion, spanY, thickness));
                 Block(group.transform, $"Pilaster_East_{z}", mat, new Vector3(eastX, midY, z), new Vector3(protrusion, spanY, thickness));
@@ -171,7 +172,7 @@ namespace RuleGhost.EditorTools
             foreach (float x in northX)
                 Block(group.transform, $"Placard_North_{x}", mat, new Vector3(x, y, HalfDepth - 0.03f), new Vector3(w, h, t));
 
-            float[] sideZ = { -5f, 0f, 5f };
+            float[] sideZ = { -6.5f, 0f, 6.5f };
             foreach (float z in sideZ)
             {
                 Block(group.transform, $"Placard_West_{z}", mat, new Vector3(-HalfWidth + 0.03f, y, z), new Vector3(t, h, w));

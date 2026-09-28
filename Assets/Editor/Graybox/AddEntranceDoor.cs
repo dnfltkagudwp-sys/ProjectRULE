@@ -17,11 +17,13 @@ namespace RuleGhost.EditorTools
     {
         private const string ScenePath = "Assets/Scenes/Lobby_Graybox.unity";
 
-        // Matches LobbyGrayboxBuilder's own private constants -- HalfWidth=7/HalfDepth=10/Height=5/
-        // WallThickness=0.2 -- and the resulting south-wall gap (Wall_South_Left ends at x=-1.5,
+        // Matches LobbyGrayboxBuilder's own private constants -- HalfWidth=9/HalfDepth=13/Height=5/
+        // WallThickness=0.2 (updated for the 2026-09-28 lobby resize, see ResizeLobby.cs, which
+        // directly translated the live "EntranceDoor" group by the same -3 in Z rather than
+        // re-running this) -- and the resulting south-wall gap (Wall_South_Left ends at x=-1.5,
         // Wall_South_Right starts at x=1.5; see BuildStructure).
         private const float OpeningHalfWidth = 1.5f;
-        private const float WallZ = -10f - 0.2f / 2f; // -HalfDepth - WallThickness/2
+        private const float WallZ = -13f - 0.2f / 2f; // -HalfDepth - WallThickness/2
         private const float WallThickness = 0.2f;
         private const float CeilingHeight = 5f;
 
