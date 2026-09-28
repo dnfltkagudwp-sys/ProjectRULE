@@ -32,21 +32,26 @@ namespace RuleGhost.EditorTools
             var rulebook = canvasGO.GetComponent<RulebookUI>();
             var panelTransform = canvasGO.transform.Find("RulebookPanel");
             var hintTransform = canvasGO.transform.Find("HintText");
+            var viewportTransform = panelTransform != null ? panelTransform.Find("Viewport") : null;
             var panel = panelTransform != null ? panelTransform.gameObject : null;
             var hint = hintTransform != null ? hintTransform.gameObject : null;
-            var body = panelTransform != null ? panelTransform.Find("BodyText")?.GetComponent<Text>() : null;
+            var body = viewportTransform != null ? viewportTransform.Find("BodyText")?.GetComponent<Text>() : null;
 
             Debug.Log($"[InspectRulebookUI] Canvas found: {canvasGO != null}, RulebookUI component: {rulebook != null}, " +
                       $"Panel found: {panel != null}, Panel active (should be false): {panel != null && panel.activeSelf}, " +
-                      $"HintText found: {hint != null}, BodyText found: {body != null}");
+                      $"HintText found: {hint != null}, Viewport found: {viewportTransform != null}, BodyText found: {body != null}");
 
             if (rulebook != null)
             {
                 var so = new SerializedObject(rulebook);
                 var panelRootProp = so.FindProperty("panelRoot");
                 var bodyTextProp = so.FindProperty("bodyText");
+                var contentRectProp = so.FindProperty("contentRect");
+                var viewportRectProp = so.FindProperty("viewportRect");
                 Debug.Log($"[InspectRulebookUI] RulebookUI.panelRoot wired: {panelRootProp.objectReferenceValue != null}, " +
-                          $"RulebookUI.bodyText wired: {bodyTextProp.objectReferenceValue != null}");
+                          $"RulebookUI.bodyText wired: {bodyTextProp.objectReferenceValue != null}, " +
+                          $"RulebookUI.contentRect wired: {contentRectProp.objectReferenceValue != null}, " +
+                          $"RulebookUI.viewportRect wired: {viewportRectProp.objectReferenceValue != null}");
             }
 
             if (body != null)

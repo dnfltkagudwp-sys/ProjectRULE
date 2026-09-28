@@ -37,6 +37,11 @@ namespace RuleGhost.Anomalies
         private AudioSource soundCueSource;
         private static AudioClip placeholderCueClip;
 
+        // Non-audio counterpart to soundCueObject -- a flickering red point light so the anomaly
+        // still reads to a player who can't hear (or has muted) the placeholder audio cue.
+        private GameObject soundCueLightObject;
+        private static readonly Color SoundCueLightColor = new(1f, 0.15f, 0.1f);
+
         public void ResetAll(PatrolSceneBindings bindings)
         {
             foreach (var renderer in tintedRenderers)
@@ -71,6 +76,10 @@ namespace RuleGhost.Anomalies
             if (soundCueObject != null)
             {
                 soundCueObject.SetActive(false);
+            }
+            if (soundCueLightObject != null)
+            {
+                soundCueLightObject.SetActive(false);
             }
         }
 
@@ -301,6 +310,20 @@ namespace RuleGhost.Anomalies
             soundCueObject.transform.localPosition = Vector3.zero;
             soundCueObject.SetActive(true);
             soundCueSource.Play();
+
+            if (soundCueLightObject == null)
+            {
+                soundCueLightObject = new GameObject("AnomalySoundCueLight");
+                var light = soundCueLightObject.AddComponent<Light>();
+                light.type = LightType.Point;
+                light.color = SoundCueLightColor;
+                light.range = 3f;
+                soundCueLightObject.AddComponent<FlickerLight>();
+            }
+
+            soundCueLightObject.transform.SetParent(t, false);
+            soundCueLightObject.transform.localPosition = Vector3.zero;
+            soundCueLightObject.SetActive(true);
         }
 
         private static AudioClip GetPlaceholderCueClip()

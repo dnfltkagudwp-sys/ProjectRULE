@@ -119,6 +119,51 @@ namespace RuleGhost.Anomalies.Tests
         }
 
         [Test]
+        public void AfterDiscovery_DeadlineExpiring_Violates()
+        {
+            var door = Spawn("Door", new Vector3(0f, 0f, 3f));
+            var bindings = MakeBindings(door.transform);
+            var camera = MakeCamera(Vector3.zero, 0f);
+            var state = new TerminalAbortState();
+            state.Tick(TerminalAbortState.DiscoveryDwellSeconds + 0.05f, camera, null, bindings);
+            Assert.IsTrue(state.Discovered);
+
+            state.Tick(TerminalAbortState.AbortDeadlineSeconds + 0.1f, camera, null, bindings);
+
+            Assert.IsTrue(state.Violated);
+        }
+
+        [Test]
+        public void AfterDiscovery_WithinDeadline_DoesNotViolate()
+        {
+            var door = Spawn("Door", new Vector3(0f, 0f, 3f));
+            var bindings = MakeBindings(door.transform);
+            var camera = MakeCamera(Vector3.zero, 0f);
+            var state = new TerminalAbortState();
+            state.Tick(TerminalAbortState.DiscoveryDwellSeconds + 0.05f, camera, null, bindings);
+
+            state.Tick(TerminalAbortState.AbortDeadlineSeconds - 0.5f, camera, null, bindings);
+
+            Assert.IsFalse(state.Violated);
+        }
+
+        // The clock only starts once the player has actually seen the door -- standing around
+        // before that is an ordinary patrol, not a rule violation waiting to fire.
+        [Test]
+        public void BeforeDiscovery_TimePassing_DoesNotViolate()
+        {
+            var door = Spawn("Door", new Vector3(0f, 0f, 3f));
+            var bindings = MakeBindings(door.transform);
+            var lookingAway = MakeCamera(Vector3.zero, 180f);
+            var state = new TerminalAbortState();
+
+            state.Tick(TerminalAbortState.AbortDeadlineSeconds * 3f, lookingAway, null, bindings);
+
+            Assert.IsFalse(state.Discovered);
+            Assert.IsFalse(state.Violated);
+        }
+
+        [Test]
         public void AfterDiscovery_VisitingAnythingElseViolates()
         {
             var door = Spawn("Door", new Vector3(0f, 0f, 3f));

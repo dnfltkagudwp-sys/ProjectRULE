@@ -11,6 +11,12 @@ namespace RuleGhost.EditorTools
     // Legacy uGUI Text with an OS-dynamic Korean font (Malgun Gothic) rather than TextMeshPro --
     // this project has never imported TMP's Essential Resources, and a dynamic OS font renders
     // Korean correctly with zero setup, which is all this panel needs.
+    //
+    // The body sits in a masked viewport with a ContentSizeFitter-driven content object rather
+    // than a Unity ScrollRect -- this project has no EventSystem anywhere (every interaction is
+    // Keyboard.current/Mouse.current polling, see GrayboxTestController/DoorTestInteraction/etc.),
+    // and ScrollRect's mouse-wheel/drag handling needs one. RulebookUI moves the content rect
+    // directly instead, matching how the rest of the project already handles input.
     public static class BuildRulebookUI
     {
         private const string ScenePath = "Assets/Scenes/Lobby_Graybox.unity";
@@ -41,30 +47,58 @@ namespace RuleGhost.EditorTools
             hint.color = new Color(1f, 1f, 1f, 0.75f);
             SetAnchors(hint.rectTransform, new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(20f, 20f), new Vector2(300f, 40f));
 
+            // Bigger than before (was 1100x700) -- 9 rules of rule text plain overflowed the old
+            // panel with nothing to clip or scroll it, spilling raw text past the black background.
+            // Height has real slack (measured content ~720px against a first pass at 750px
+            // viewport left only ~30px spare, which real Play Mode font rendering ate into and
+            // clipped the last line) -- deliberately generous now instead of sized to the exact
+            // edit-time measurement, since dynamic-font metrics aren't identical between an
+            // editor-script layout pass and actual Play Mode rendering.
             var panelGO = new GameObject("RulebookPanel", typeof(Image));
             panelGO.transform.SetParent(canvasGO.transform, false);
             var panelImage = panelGO.GetComponent<Image>();
             panelImage.color = new Color(0f, 0f, 0f, 0.85f);
             var panelRect = panelGO.GetComponent<RectTransform>();
-            // Point anchor (0.5,0.5) means offsetMin/offsetMax are corner positions relative to
-            // screen center, not a size from an origin -- symmetric +/-half-size actually centers
-            // the box, instead of pinning its bottom-left corner to screen center like before.
             SetAnchors(panelRect, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                new Vector2(-550f, -350f), new Vector2(550f, 350f));
+                new Vector2(-650f, -520f), new Vector2(650f, 520f));
             panelGO.SetActive(false);
 
             var title = CreateText(panelGO.transform, "TitleText", font, 32, TextAnchor.UpperLeft);
             title.text = "규칙서";
             title.fontStyle = FontStyle.Bold;
-            // Top-stretch anchor: offsetMax.y must be <= 0 (inset from the top edge), not positive
-            // (which pushed the title above the panel's own bounds, off the visible canvas).
             SetAnchors(title.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(40f, -70f), new Vector2(-40f, -10f));
 
-            var body = CreateText(panelGO.transform, "BodyText", font, 26, TextAnchor.UpperLeft);
-            SetAnchors(body.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(40f, 40f), new Vector2(-40f, -70f));
+            var scrollHint = CreateText(panelGO.transform, "ScrollHintText", font, 18, TextAnchor.UpperLeft);
+            scrollHint.text = "↑↓ 또는 마우스 휠로 스크롤";
+            scrollHint.color = new Color(1f, 1f, 1f, 0.5f);
+            SetAnchors(scrollHint.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(40f, -98f), new Vector2(-40f, -74f));
+
+            // Viewport: clips the content, doesn't move itself. RectMask2D needs no Image to work.
+            var viewportGO = new GameObject("Viewport", typeof(RectMask2D));
+            viewportGO.transform.SetParent(panelGO.transform, false);
+            var viewportRect = viewportGO.GetComponent<RectTransform>();
+            SetAnchors(viewportRect, Vector2.zero, Vector2.one, new Vector2(40f, 40f), new Vector2(-40f, -110f));
+
+            // Content: the thing that actually scrolls. Pivot pinned to its own top so
+            // ContentSizeFitter grows it downward from a fixed top edge instead of from center.
+            var body = CreateText(viewportGO.transform, "BodyText", font, 26, TextAnchor.UpperLeft);
+            var bodyRect = body.rectTransform;
+            bodyRect.anchorMin = new Vector2(0f, 1f);
+            bodyRect.anchorMax = new Vector2(1f, 1f);
+            bodyRect.pivot = new Vector2(0.5f, 1f);
+            bodyRect.anchoredPosition = Vector2.zero;
+            // A freshly added RectTransform keeps its default sizeDelta (100x100) even after the
+            // anchors above are set to fully stretch horizontally -- left unset, that 100 pads the
+            // rect 50px wider than the viewport on each side, and the mask then clips those margins
+            // off the actual text. Zeroing x here is what makes the stretch anchors take effect;
+            // ContentSizeFitter still owns y.
+            bodyRect.sizeDelta = new Vector2(0f, bodyRect.sizeDelta.y);
+            var fitter = body.gameObject.AddComponent<ContentSizeFitter>();
+            fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
             var rulebook = canvasGO.AddComponent<RulebookUI>();
-            rulebook.EditorConfigure(panelGO, body);
+            rulebook.EditorConfigure(panelGO, body, bodyRect, viewportRect);
 
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
             EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene());

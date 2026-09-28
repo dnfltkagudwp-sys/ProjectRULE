@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Random = System.Random;
@@ -21,7 +22,12 @@ namespace RuleGhost.Anomalies
             Idle,
             PatrolActive,
             Result,
-            Complete
+            Complete,
+            // Any forbidden action that ends the round outright (live-detected or judged at
+            // guard-room return) routes through TriggerDeath and sits in this state for the
+            // duration of the death visual -- Update()'s PatrolActive-only guard means nothing
+            // else (observation ticks, RecordVisit) can run again until it's over.
+            DeathSequence
         }
 
         [SerializeField] private PatrolProfile[] patrolSequence = new PatrolProfile[6];
@@ -58,6 +64,26 @@ namespace RuleGhost.Anomalies
         private Transform playerRoot;
         private bool loggedMissingCameraWarning;
 
+        // RuleGhost.Anomalies is its own assembly (RuleGhost.Anomalies.asmdef) and deliberately
+        // can't reference the UI/Debug-folder scripts that compile into the default assembly
+        // (that's the direction RulebookUI.cs already reaches the other way, via
+        // PatrolRuntimeController.Instance) -- so the round-intro screen and player-freeze hooks
+        // are exposed as static delegate slots instead of concrete types. RoundIntroUI and
+        // GrayboxTestController register themselves into these in Awake/OnDestroy.
+        public static Func<string, IEnumerator> RoundIntroShow;
+        public static Func<IEnumerator> RoundIntroHide;
+        public static Action<bool> SetPlayerControlsEnabled;
+
+        // Same hook pattern, for the death sequence -- keyed by a DeathSequenceIds string so one
+        // delegate covers all five death visuals instead of one field per anomaly.
+        public static Func<string, IEnumerator> PlayDeathSequence;
+
+        // The guard room door (DoorTestInteraction, a plain player-toggled hinge -- not part of
+        // the anomaly system, unlike the inspection door which AnomalyRuntimeApplier already
+        // resets itself) has no round-start reset of its own; left open, it stayed open into the
+        // next round with nothing to close it. Same static-hook pattern as the two above.
+        public static Action ResetGuardRoomDoor;
+
         // Captured at the end of the previous round for the minimal result overlay in OnGUI --
         // deliberately not CurrentProfile/LastResult alone, since StartPatrolAt overwrites
         // CurrentProfile with the *next* round before this frame ever renders.
@@ -79,6 +105,12 @@ namespace RuleGhost.Anomalies
         // itself immediately re-firing GuardRoomReturn (see RecordVisit), since the player now
         // spawns literally inside that trigger's volume.
         private float roundStartTime;
+
+        // Guards TriggerDeath against a second violation (in the same or a later frame) starting
+        // a second death sequence -- StartCoroutine runs synchronously up to the first yield, so
+        // this is already true before any other same-frame call site's own StartCoroutine call
+        // returns. Checked alongside CurrentState == DeathSequence as a cheap second guard.
+        private bool deathSequenceRunning;
 
         private void Awake()
         {
@@ -115,9 +147,17 @@ namespace RuleGhost.Anomalies
             {
                 observationMonitor.Tick(Time.deltaTime, playerCamera, playerRoot, sceneBindings, currentAnomalies);
                 looseObservationTracker.Tick(Time.deltaTime, playerCamera, playerRoot, sceneBindings);
-                if (FindTerminalAnomaly() != null)
+                var terminal = FindTerminalAnomaly();
+                if (terminal != null)
                 {
+                    // The abort deadline expiring is a violation nothing else would notice --
+                    // RecordVisit only hears about it when the player actually checks something.
+                    bool wasViolated = terminalAbortState.Violated;
                     terminalAbortState.Tick(Time.deltaTime, playerCamera, playerRoot, sceneBindings);
+                    if (terminalAbortState.Violated && !wasViolated)
+                    {
+                        StartCoroutine(TriggerDeath(terminal.Id));
+                    }
                 }
 
                 // Gaze/facing forbidden actions (MakeEyeContact, ShowBackToExhibit) are judged
@@ -128,7 +168,7 @@ namespace RuleGhost.Anomalies
                 {
                     if (notifiedViolations.Add(id))
                     {
-                        FailPatrolImmediately(id);
+                        StartCoroutine(TriggerDeath(id));
                     }
                 }
 
@@ -153,17 +193,36 @@ namespace RuleGhost.Anomalies
 
         public void StartPatrolAt(int index)
         {
+            StartCoroutine(StartPatrolRoutine(index));
+        }
+
+        // Coroutine so the round-start intro screen (day/time black screen) can play, and the
+        // player's controls can be frozen for it, before the round below actually begins -- the
+        // guard clauses stay synchronous (no intro for "sequence exhausted"/misconfiguration).
+        private IEnumerator StartPatrolRoutine(int index)
+        {
             if (patrolSequence == null || index < 0 || index >= patrolSequence.Length || patrolSequence[index] == null)
             {
                 CurrentState = State.Idle;
                 Debug.Log("[PatrolRuntimeController] No more patrols in the sequence -- all complete.");
-                return;
+                yield break;
             }
 
             if (combinationRuleSet == null)
             {
                 Debug.LogError("[PatrolRuntimeController] CombinationRuleSet not assigned.");
-                return;
+                yield break;
+            }
+
+            // Only the "show and hold" half plays here -- the teleport/anomaly-apply block below
+            // runs while the screen is still fully black, and RoundIntroHide (the fade back to
+            // the scene) doesn't run until after that's done. Otherwise the fade-out would reveal
+            // the player still standing wherever they were before snapping to the guard room.
+            bool showingIntro = RoundIntroShow != null;
+            if (showingIntro)
+            {
+                SetPlayerControlsEnabled?.Invoke(false);
+                yield return RoundIntroShow(BuildRoundLabel(patrolSequence[index]));
             }
 
             currentIndex = index;
@@ -179,6 +238,7 @@ namespace RuleGhost.Anomalies
             roundStartTime = Time.time;
 
             anomalyApplier.ResetAll(sceneBindings);
+            ResetGuardRoomDoor?.Invoke();
             observationMonitor.ResetAll();
             looseObservationTracker.ResetAll();
             routineState.ResetVisuals(sceneBindings);
@@ -200,6 +260,15 @@ namespace RuleGhost.Anomalies
                 : "(none)";
             Debug.Log($"[PatrolRuntimeController] Patrol {CurrentProfile.PatrolIndex} ({CurrentProfile.Slot}) started -- " +
                       $"{generation.Anomalies.Count} anomaly(ies) applied: [{anomalyIds}]");
+
+            if (showingIntro)
+            {
+                if (RoundIntroHide != null)
+                {
+                    yield return RoundIntroHide();
+                }
+                SetPlayerControlsEnabled?.Invoke(true);
+            }
         }
 
         // Called by PatrolInteractable (E-key visits) and GuardRoomReturnTrigger (walking into the
@@ -252,7 +321,7 @@ namespace RuleGhost.Anomalies
                 var terminal = FindTerminalAnomaly();
                 if (terminal != null)
                 {
-                    FailPatrolImmediately(terminal.Id);
+                    StartCoroutine(TriggerDeath(terminal.Id));
                 }
             }
         }
@@ -315,7 +384,7 @@ namespace RuleGhost.Anomalies
                 string violator = PatrolEvaluator.FindForbiddenAnomaly(target, ActionTag.AdjustThermostat, currentAnomalies);
                 if (violator != null)
                 {
-                    FailPatrolImmediately(violator);
+                    StartCoroutine(TriggerDeath(violator));
                 }
             }
             else if (target.Kind == TargetKind.SpecificPainting)
@@ -389,6 +458,12 @@ namespace RuleGhost.Anomalies
         // to the same target, not a distinct action tag -- checked generically here, for every
         // visit, rather than only for a specific target kind. Gated to fire exactly once (at the
         // exact visit that crosses the threshold) so it doesn't re-fire on a third, fourth, ... visit.
+        //
+        // Deliberately doesn't call TriggerDeath -- unlike the gaze/facing/thermostat/terminal
+        // violations, this is a "handling/order" rule rather than an in-the-moment observation
+        // reaction, so it stays in the 순찰 종료 판정형 bucket: silently noted here, and
+        // Evaluate() independently catches it (via the same FindForbiddenAnomaly check, at guard-
+        // room-return time) into result.ForbiddenAnomalyActions for FinishPatrol's shared death.
         private void CheckLiveRecheckViolation(TargetRef target)
         {
             if (CurrentProgress.VisitCount(target) != PatrolEvaluator.RecheckVisitThreshold)
@@ -399,25 +474,43 @@ namespace RuleGhost.Anomalies
             string violator = PatrolEvaluator.FindForbiddenAnomaly(target, ActionTag.RecheckExhibit, currentAnomalies);
             if (violator != null)
             {
-                FailPatrolImmediately(violator);
+                Debug.Log($"[PatrolRuntimeController] Patrol {CurrentProfile.PatrolIndex} -- {violator} re-check violated " +
+                          "(deferred: judged at guard-room return, not an immediate death).");
             }
         }
 
-        // The live counterpart to Evaluate()'s own forbidden-action pass -- fires the instant a
-        // forbidden action happens instead of waiting for the player to walk back to the guard
-        // room. Deliberately doesn't end the round itself: the player still has to return to the
-        // guard room to close it out (TryCompletePatrol), which independently arrives at the same
-        // Success=false via the normal Evaluate() call -- this is purely the early UI notice.
-        private void FailPatrolImmediately(string violatorId)
+        // Single entry point for every "this ends the round right now" path -- the terminal abort
+        // and the three live-detected forbidden actions (eye contact, landscape stare, sound-cue
+        // turn-back, forbidden thermostat touch) all funnel through here instead of each one
+        // separately freezing the player/changing state, so there's exactly one place that can go
+        // wrong instead of five. The bool+state guard blocks a second violation (detected in the
+        // same or a later frame) from starting a second death while one is already playing.
+        private IEnumerator TriggerDeath(string deathId)
         {
-            if (roundFailed)
+            if (deathSequenceRunning || CurrentState == State.DeathSequence)
             {
-                return;
+                yield break;
             }
 
+            deathSequenceRunning = true;
             roundFailed = true;
-            activeNotice = $"규칙 위반: {violatorId}";
-            Debug.Log($"[PatrolRuntimeController] Patrol {CurrentProfile.PatrolIndex} -- forbidden action detected live ({violatorId}).");
+            activeNotice = $"규칙 위반: {deathId}";
+            CurrentState = State.DeathSequence;
+            SetPlayerControlsEnabled?.Invoke(false);
+            Debug.Log($"[PatrolRuntimeController] Patrol {CurrentProfile.PatrolIndex} -- death sequence triggered ({deathId}).");
+
+            if (PlayDeathSequence != null)
+            {
+                yield return PlayDeathSequence(deathId);
+            }
+            else
+            {
+                Debug.LogError($"[PatrolRuntimeController] PlayDeathSequence hook is not registered (deathId={deathId}) -- " +
+                                "resetting to Day 1 with no death visual. Is DeathSequenceUI missing from the scene?");
+            }
+
+            deathSequenceRunning = false;
+            StartPatrolAt(0);
         }
 
         // Every round starts "경비실을 나와" per the design doc -- without this the player just
@@ -426,6 +519,16 @@ namespace RuleGhost.Anomalies
         // the guard room. Reuses the already-bound GuardRoomReturn target instead of a new spawn
         // marker, matching PatrolSceneBindings' existing TargetRef -> Transform convention.
         //
+        // PatrolProfile has no stored display label -- day number is implicit in PatrolIndex (two
+        // patrols per day, AM1 then AM5; see AnomalyDataBuilder's CreateProfile calls), so this
+        // derives "N일차 새벽 M시" the same way each time rather than storing a redundant string.
+        private static string BuildRoundLabel(PatrolProfile profile)
+        {
+            int day = (profile.PatrolIndex - 1) / 2 + 1;
+            string timeText = profile.Slot == TimeSlot.AM1 ? "새벽 1시" : "새벽 5시";
+            return $"{day}일차 {timeText}";
+        }
+
         // This lands the player literally inside GuardRoomReturnTrigger's own volume (it covers
         // most of the small guard room) -- see RecordVisit's SpawnGraceSeconds guard for why that
         // doesn't immediately re-end the round it just started.
@@ -449,36 +552,15 @@ namespace RuleGhost.Anomalies
         }
 
         // Called whenever the player physically reaches the guard room (both slots now -- see
-        // RecordVisit). Evaluates once; a shortfall that's ONLY missing/incomplete required items
-        // (no forbidden violation) keeps the patrol going instead of ending it, per the confirmed
-        // design: "필요한 걸 다 했으면 복귀 시 종료, 안 했으면 경비 유지." Any forbidden violation --
-        // whether just caught here for the first time, or already flagged live by
-        // FailPatrolImmediately -- ends the round as a fail; Evaluate() agrees with the live flag
-        // either way since both read the same underlying progress/anomaly state.
+        // RecordVisit). Walking back in is a commitment, not a progress check: this evaluates once
+        // and whatever it finds is final. An incomplete checklist used to just bounce the player
+        // back out with a "go finish it" notice, but a half-done patrol is now as fatal as a
+        // forbidden action -- both end here, in 순찰 종료 판정형's shared death (see FinishPatrol).
         private void TryCompletePatrol()
         {
             var observation = observationMonitor.BuildReport();
             var result = PatrolEvaluator.Evaluate(CurrentProfile.Duty, CurrentProgress, currentAnomalies, observation,
                 looseObservationTracker.Observed, routineState, terminalAbortState.Violated);
-
-            bool onlyMissingRequirements = !result.Success && result.ForbiddenAnomalyActions.Count == 0;
-            if (onlyMissingRequirements)
-            {
-                // Testing-only detail -- names exactly which targets/rules are still outstanding,
-                // the same way FinishPatrol's own FAIL log does, instead of a bare "something's
-                // missing" that gives no lead on what to go check next.
-                var parts = new List<string>();
-                if (result.MissingTargets.Count > 0) parts.Add(string.Join(", ", result.MissingTargets));
-                if (result.MissingObservations.Count > 0) parts.Add(string.Join(", ", result.MissingObservations));
-                if (result.MissingRechecks.Count > 0) parts.Add(string.Join(", ", result.MissingRechecks));
-                if (result.MissingRoutineTasks.Count > 0) parts.Add(string.Join(", ", result.MissingRoutineTasks));
-                if (result.EntranceNotLast) parts.Add("출입문이 마지막이 아님");
-                string detail = string.Join(" / ", parts);
-
-                Debug.Log($"[PatrolRuntimeController] Reached guard room but required checks are incomplete -- patrol continues. [{detail}]");
-                activeNotice = $"점검하지 않은 항목: {detail}";
-                return;
-            }
 
             FinishPatrol(result);
         }
@@ -525,8 +607,19 @@ namespace RuleGhost.Anomalies
                           $"MissingRechecks=[{missingRechecks}] MissingRoutineTasks=[{missingRoutine}]");
             }
 
-            CurrentState = State.Complete;
-            StartPatrolAt(currentIndex + 1);
+            if (LastResult.Success)
+            {
+                CurrentState = State.Complete;
+                StartPatrolAt(currentIndex + 1);
+            }
+            else
+            {
+                // 순찰 종료 판정형: this round's forbidden violation was only ever judged here (at
+                // guard-room return), not caught live -- e.g. RecheckExhibit (see
+                // CheckLiveRecheckViolation). Same shared death as every other failure, just a
+                // later trigger point; TriggerDeath resets to Day 1 the same way regardless of id.
+                StartCoroutine(TriggerDeath(DeathSequenceIds.PatrolFailed));
+            }
         }
 
         // Placeholder-grade result feedback for testing only -- deliberately just corner labels,
@@ -562,6 +655,21 @@ namespace RuleGhost.Anomalies
             patrolSequence = profiles;
             combinationRuleSet = ruleSet;
             sceneBindings = bindings;
+        }
+
+        // Editor-only preview entry point (see DeathSequenceTestKeys) -- every real death is gated
+        // behind a randomly rolled anomaly, so checking one specific sting is otherwise a matter of
+        // replaying rounds until the right one comes up. Restricted to PatrolActive so it can't
+        // interleave with StartPatrolRoutine's own intro coroutine.
+        public void DebugTriggerDeath(string deathId)
+        {
+            if (CurrentState != State.PatrolActive)
+            {
+                Debug.LogWarning($"[PatrolRuntimeController] Ignoring debug death '{deathId}' -- no patrol is active.");
+                return;
+            }
+
+            StartCoroutine(TriggerDeath(deathId));
         }
 #endif
     }

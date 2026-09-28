@@ -1,3 +1,4 @@
+using RuleGhost.Anomalies;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -24,6 +25,20 @@ namespace RuleGhost.Debugging
             cam = GetComponentInChildren<Camera>();
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
+            // Registered in Awake/OnDestroy rather than OnEnable/OnDisable -- SetControlsEnabled
+            // itself flips `enabled`, which would immediately unsubscribe (and never resubscribe)
+            // if the registration were tied to enabled state instead of the object's lifetime.
+            PatrolRuntimeController.SetPlayerControlsEnabled += SetControlsEnabled;
+        }
+
+        private void OnDestroy()
+        {
+            PatrolRuntimeController.SetPlayerControlsEnabled -= SetControlsEnabled;
+        }
+
+        private void SetControlsEnabled(bool value)
+        {
+            enabled = value;
         }
 
         private void Update()
