@@ -24,13 +24,6 @@ namespace RuleGhost.Anomalies
 
         private readonly List<Renderer> tintedRenderers = new();
         private readonly Dictionary<Transform, Quaternion> rotationOverrides = new();
-        // Kept alive and just deactivated between rounds instead of Destroy()'d and recreated --
-        // Object.Destroy() doesn't actually remove the GameObject until the end of the frame, so
-        // a new round that also rolls HighHumidity could create its replacement before the old
-        // one was gone, showing both labels stacked on top of each other for a frame (or longer,
-        // if rounds advance faster than that).
-        private GameObject humidityLabel;
-        private TextMesh humidityTextMesh;
 
         // Same persistent-object pattern as humidityLabel, for SoundFromExhibit's audio cue.
         private GameObject soundCueObject;
@@ -64,10 +57,7 @@ namespace RuleGhost.Anomalies
 
             SetDoorAngle(DoorClosedAngle);
 
-            if (humidityLabel != null)
-            {
-                humidityLabel.SetActive(false);
-            }
+            HygrometerDisplay.Set(bindings, HygrometerDisplay.State.Normal);
 
             if (soundCueSource != null)
             {
@@ -349,41 +339,11 @@ namespace RuleGhost.Anomalies
             return placeholderCueClip;
         }
 
+        // Anomaly's own high-humidity state; Routine's own (mutually exclusive, see
+        // RoutinePatrolState) needs-adjustment state goes through the same HygrometerDisplay.
         private void ShowHumidity(PatrolSceneBindings bindings, bool isHigh)
         {
-            var t = bindings.Resolve(TargetRef.Simple(TargetKind.Thermometer));
-            if (t == null)
-            {
-                Debug.LogWarning("[AnomalyRuntimeApplier] Could not resolve Thermometer.");
-                return;
-            }
-
-            int value = isHigh ? Random.Range(72, 96) : Random.Range(45, 56);
-
-            if (humidityLabel == null)
-            {
-                humidityLabel = new GameObject("HumidityReadout");
-                humidityLabel.transform.SetParent(t, false);
-                humidityLabel.transform.localPosition = Vector3.up * 0.5f;
-                humidityTextMesh = humidityLabel.AddComponent<TextMesh>();
-                humidityTextMesh.characterSize = 0.15f;
-                humidityTextMesh.fontSize = 48;
-                humidityTextMesh.anchor = TextAnchor.LowerCenter;
-            }
-
-            humidityLabel.SetActive(true);
-            humidityTextMesh.text = $"{value}%";
-            humidityTextMesh.color = isHigh ? Color.red : Color.white;
-
-            var renderer = t.GetComponent<Renderer>();
-            if (renderer != null)
-            {
-                var block = new MaterialPropertyBlock();
-                renderer.GetPropertyBlock(block);
-                block.SetColor("_BaseColor", isHigh ? Color.red : new Color(0.2f, 0.5f, 0.9f));
-                renderer.SetPropertyBlock(block);
-                tintedRenderers.Add(renderer);
-            }
+            HygrometerDisplay.Set(bindings, isHigh ? HygrometerDisplay.State.Anomaly : HygrometerDisplay.State.Normal);
         }
     }
 }

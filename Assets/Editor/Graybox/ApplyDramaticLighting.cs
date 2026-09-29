@@ -129,9 +129,15 @@ namespace RuleGhost.EditorTools
             var guardLight = guardLightGO.AddComponent<Light>();
             guardLight.type = LightType.Point;
             guardLight.color = GuardWarm;
-            guardLight.intensity = 5.5f;
+            // Was 5.5 -- at this room's size (3.2x3.2x3m) the light sits only ~1m from the
+            // ceiling/walls, so intensity that reads fine at gallery distances blew the surfaces
+            // out to near-white up close instead of a calm warm glow.
+            guardLight.intensity = 2.0f;
             guardLight.range = 5f;
-            AddHousing(guardLightGO.transform, PrimitiveType.Cube, new Vector3(0.25f, 0.15f, 0.25f));
+            // No housing cube here (unlike the gallery spots) -- at 0.25m it read fine from a
+            // normal viewing distance, but the guard room is small enough that the player can
+            // walk right under/beside it, where the dark metal housing filled a big chunk of the
+            // screen as a flat black block. Bare point light instead.
 
             // Thin rail bars behind each row of gallery spots so they read
             // as lights mounted on a track system instead of separate dots

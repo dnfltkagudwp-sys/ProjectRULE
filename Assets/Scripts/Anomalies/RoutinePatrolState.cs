@@ -35,8 +35,6 @@ namespace RuleGhost.Anomalies
         private static readonly PaintingWall[] AllWalls = { PaintingWall.North, PaintingWall.West, PaintingWall.East };
 
         private readonly Dictionary<Transform, Quaternion> baseRotations = new();
-        private GameObject humidityLabel;
-        private TextMesh humidityTextMesh;
 
         public TargetRef? TiltedPainting { get; private set; }
         public bool HumidityNeedsAdjustment { get; private set; }
@@ -54,10 +52,10 @@ namespace RuleGhost.Anomalies
             TiltedPainting = null;
 
             HumidityNeedsAdjustment = false;
-            if (humidityLabel != null)
-            {
-                humidityLabel.SetActive(false);
-            }
+            // Runs before Apply/RollForRound decide this round's actual state (see
+            // PatrolRuntimeController's round-start order) -- whichever of the two (mutually
+            // exclusive, see RollForRound below) has something to show overwrites this again.
+            HygrometerDisplay.Set(bindings, HygrometerDisplay.State.Normal);
         }
 
         // Decides this round's Routine conditions and immediately applies their visuals.
@@ -143,10 +141,6 @@ namespace RuleGhost.Anomalies
             ShowHumidity(bindings, value, needsAdjustment: false);
         }
 
-        // Separate GameObject from AnomalyRuntimeApplier's own "HumidityReadout" -- the two never
-        // show at once (HighHumidity active suppresses the Routine roll, see RollForRound), but
-        // keeping them fully independent avoids either system needing to know about the other's
-        // internal state, matching the Routine/Anomaly separation this class exists for.
 #if UNITY_EDITOR
         // Test/editor-only direct state injection -- RollForRound's own Random roll decides which
         // painting (if any) tilts and whether humidity needs adjusting, which a test of
@@ -159,28 +153,11 @@ namespace RuleGhost.Anomalies
         }
 #endif
 
+        // `value` is kept (even though the baked hygrometer textures show one fixed number per
+        // state, not this exact roll) so the Random sequence this consumes stays unchanged.
         private void ShowHumidity(PatrolSceneBindings bindings, int value, bool needsAdjustment)
         {
-            var t = bindings?.Resolve(TargetRef.Simple(TargetKind.Thermometer));
-            if (t == null)
-            {
-                return;
-            }
-
-            if (humidityLabel == null)
-            {
-                humidityLabel = new GameObject("RoutineHumidityReadout");
-                humidityLabel.transform.SetParent(t, false);
-                humidityLabel.transform.localPosition = Vector3.up * 0.5f;
-                humidityTextMesh = humidityLabel.AddComponent<TextMesh>();
-                humidityTextMesh.characterSize = 0.15f;
-                humidityTextMesh.fontSize = 48;
-                humidityTextMesh.anchor = TextAnchor.LowerCenter;
-            }
-
-            humidityLabel.SetActive(true);
-            humidityTextMesh.text = $"{value}%";
-            humidityTextMesh.color = needsAdjustment ? new Color(1f, 0.7f, 0.1f) : Color.white;
+            HygrometerDisplay.Set(bindings, needsAdjustment ? HygrometerDisplay.State.Routine : HygrometerDisplay.State.Normal);
         }
     }
 }
