@@ -7,7 +7,7 @@ namespace RuleGhost.Anomalies
     // PatrolEvaluator (that stays the end-of-round judge) so this one terminal anomaly's special
     // rule doesn't get folded into either general-purpose class:
     //
-    //  1. Discovery: a 0.5s gaze at the inspection door confirms the player has actually noticed
+    //  1. Discovery: a 0.3s gaze at the inspection door confirms the player has actually noticed
     //     it's wide open -- before that moment, ordinary patrol actions (checking a painting, the
     //     thermometer, ...) are NOT a rule violation; the player hasn't been told anything is wrong
     //     yet. Reuses GazeSensor the same way LooseObservationTracker does for the door's own
@@ -33,9 +33,9 @@ namespace RuleGhost.Anomalies
     // only called while a patrol is active.
     public class TerminalAbortState
     {
-        public const float DiscoveryDwellSeconds = 0.5f;
-        public const float DiscoveryConeHalfAngleDegrees = 30f;
-        public const float MaxDiscoveryDistance = 8f;
+        public const float DiscoveryDwellSeconds = 0.3f;
+        public const float DiscoveryConeHalfAngleDegrees = 45f;
+        public const float MaxDiscoveryDistance = 12f;
         public const float AbortDeadlineSeconds = 7f;
 
         private float discoveryDwell;
@@ -53,7 +53,7 @@ namespace RuleGhost.Anomalies
         }
 
         // Ticked every frame a terminal anomaly is active this round: before discovery it watches
-        // for the 0.5s gaze that confirms it, and after discovery it runs the return deadline.
+        // for the 0.3s gaze that confirms it, and after discovery it runs the return deadline.
         public void Tick(float deltaTime, Camera camera, Transform playerRoot, PatrolSceneBindings bindings)
         {
             if (Violated)
