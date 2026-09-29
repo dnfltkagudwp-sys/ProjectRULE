@@ -22,4 +22,4 @@ MonoBehaviour:
   - {fileID: 11400000, guid: ca5995432df2a8c4c83042005ed0b685, type: 2}
   - {fileID: 11400000, guid: f81e27b6ece768146bc9c6c1f8f44303, type: 2}
   - {fileID: 11400000, guid: 6f863362127645f49a7c5a776375f61a, type: 2}
-  difficulty: 1
+  difficulty: 2

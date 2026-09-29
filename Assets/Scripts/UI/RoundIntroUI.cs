@@ -28,6 +28,18 @@ namespace RuleGhost.UI
         private const float LabelDelaySeconds = 0.35f;
         private const float LabelFadeSeconds = 0.5f;
 
+        private void Awake()
+        {
+            // The scene starts fully black. The first round's intro used to fade IN to black from a
+            // clear screen, which showed the museum for a moment (right after the title screen's
+            // fade-out) before going dark again. Every later round already begins black or fades to
+            // black on purpose, so only the very first one needed this.
+            if (fade != null)
+            {
+                fade.SetAlpha(1f);
+            }
+        }
+
         private void OnEnable()
         {
             PatrolRuntimeController.RoundIntroShow = ShowAndHold;
@@ -68,6 +80,7 @@ namespace RuleGhost.UI
 
             yield return fade.FadeTo(1f, FadeInSeconds);
             yield return new WaitForSeconds(LabelDelaySeconds);
+            SoundBank.Play2D(SoundBank.Instance?.RoundIntro);
             yield return FadeLabel(1f, LabelFadeSeconds);
             yield return new WaitForSeconds(HoldSeconds);
         }

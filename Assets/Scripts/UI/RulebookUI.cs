@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using RuleGhost.Anomalies;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -5,121 +6,156 @@ using UnityEngine.UI;
 
 namespace RuleGhost.UI
 {
-    // Player-facing "규칙서" panel: Tab toggles it, showing the FULL 근무수칙 1-9 every time --
-    // not just this round's active ones. This is a real work manual the guard was handed, not a
-    // hint system that narrows itself to the current situation; the player has to recognize which
-    // rule applies themselves, same as reading an actual employee handbook.
+    // The guard's 근무수칙 as a physical booklet. It sits on the guard room desk (RulebookPickup);
+    // until the player picks it up, Tab does nothing. Once acquired it stays acquired for the rest
+    // of the run (rounds restart inside the same scene, so this instance persists across them) --
+    // Tab then opens/closes it, and Left/Right (or the mouse wheel) turn its pages. Arrow keys
+    // rather than A/D for page turns, since A/D still walk the player while the book is open.
+    // The full 근무수칙 1-9 are always shown -- a real work manual, not a hint system that narrows
+    // itself to the current round; the player has to recognize which rule applies themselves.
     //
-    // All 9 rules concatenated run taller than the panel, so the body sits in a masked viewport
-    // and this class scrolls it directly (contentRect.anchoredPosition) rather than using a Unity
-    // ScrollRect -- this project has no EventSystem anywhere, since every interaction already
-    // polls Keyboard.current/Mouse.current directly instead of going through Unity's UI event
-    // system, and a ScrollRect's wheel/drag handling needs one.
+    // Direct Keyboard/Mouse polling, no EventSystem/ScrollRect -- same convention as the rest of
+    // the project.
     public class RulebookUI : MonoBehaviour
     {
+        public static RulebookUI Instance { get; private set; }
+
         [SerializeField] private GameObject panelRoot;
         [SerializeField] private Text bodyText;
-        [SerializeField] private RectTransform contentRect;
-        [SerializeField] private RectTransform viewportRect;
+        [SerializeField] private Text pageIndicatorText;
+        [SerializeField] private GameObject hintObject;
+        [SerializeField] private GameObject pickupPromptObject;
+        [SerializeField] private int rulesPerPage = RulebookTextBuilder.DefaultRulesPerPage;
 
-        // Exposed (not const) because the right feel depends on how the new Input System reports
-        // wheel deltas on your actual hardware, which isn't something to guess blindly from code --
-        // tune these in the Inspector during Play Mode, then bake the value back in here.
-        // Wheel sign follows the common "scroll down reveals what's below" convention -- flip the
-        // sign in TickScroll if it feels backwards once you've actually tried it.
-        [SerializeField] private float wheelScrollScale = 20f;
-        [SerializeField] private float keyScrollSpeed = 900f; // px/sec
+        private readonly List<string> pages = new();
+        private int pageIndex;
+
+        public bool Acquired { get; private set; }
+
+        private void Awake()
+        {
+            Instance = this;
+            if (hintObject != null) hintObject.SetActive(false);
+            if (pickupPromptObject != null) pickupPromptObject.SetActive(false);
+            if (panelRoot != null) panelRoot.SetActive(false);
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance == this)
+            {
+                Instance = null;
+            }
+        }
+
+        public void Acquire()
+        {
+            Acquired = true;
+            if (hintObject != null) hintObject.SetActive(true);
+            SetPickupPrompt(false);
+        }
+
+        public void SetPickupPrompt(bool visible)
+        {
+            if (pickupPromptObject != null && pickupPromptObject.activeSelf != visible)
+            {
+                pickupPromptObject.SetActive(visible);
+            }
+        }
 
         private void Update()
         {
             var keyboard = Keyboard.current;
-            if (keyboard != null && keyboard.tabKey.wasPressedThisFrame && panelRoot != null)
+            if (keyboard == null || !Acquired || panelRoot == null)
+            {
+                return;
+            }
+
+            if (keyboard.tabKey.wasPressedThisFrame)
             {
                 bool willOpen = !panelRoot.activeSelf;
                 panelRoot.SetActive(willOpen);
+                var bank = SoundBank.Instance;
+                SoundBank.Play2D(willOpen ? bank?.RulebookOpen : bank?.RulebookClose);
                 if (willOpen)
                 {
                     Refresh();
                 }
             }
 
-            if (panelRoot != null && panelRoot.activeSelf)
+            if (panelRoot.activeSelf)
             {
-                TickScroll();
+                TickPageTurn(keyboard);
             }
         }
 
         private void Refresh()
         {
-            if (bodyText == null)
-            {
-                return;
-            }
+            pages.Clear();
 
             var controller = PatrolRuntimeController.Instance;
             if (controller == null)
             {
-                bodyText.text = "규칙 정보를 불러올 수 없습니다.";
+                pages.Add("규칙 정보를 불러올 수 없습니다.");
             }
             else
             {
-                string text = RulebookTextBuilder.BuildAll(controller.AllProfiles);
-                bodyText.text = string.IsNullOrEmpty(text) ? "등록된 규칙이 없습니다." : text;
+                pages.AddRange(RulebookTextBuilder.BuildPages(controller.AllProfiles, rulesPerPage));
             }
 
-            if (contentRect != null)
-            {
-                // Force the ContentSizeFitter to resolve the new text's height NOW, not on the
-                // next layout pass -- TickScroll's clamp below needs contentRect.rect.height to
-                // already be correct the same frame the panel opens.
-                LayoutRebuilder.ForceRebuildLayoutImmediate(contentRect);
-                contentRect.anchoredPosition = new Vector2(contentRect.anchoredPosition.x, 0f);
-            }
+            pageIndex = 0;
+            ShowPage();
         }
 
-        private void TickScroll()
+        private void TickPageTurn(Keyboard keyboard)
         {
-            if (contentRect == null || viewportRect == null)
-            {
-                return;
-            }
+            int step = 0;
+            if (keyboard.rightArrowKey.wasPressedThisFrame) step++;
+            if (keyboard.leftArrowKey.wasPressedThisFrame) step--;
 
-            float maxScroll = Mathf.Max(0f, contentRect.rect.height - viewportRect.rect.height);
-            if (maxScroll <= 0f)
-            {
-                return;
-            }
-
-            float delta = 0f;
             var mouse = Mouse.current;
             if (mouse != null)
             {
-                delta -= mouse.scroll.ReadValue().y * wheelScrollScale;
+                float wheel = mouse.scroll.ReadValue().y;
+                if (wheel < -0.01f) step++;
+                else if (wheel > 0.01f) step--;
             }
 
-            var keyboard = Keyboard.current;
-            if (keyboard != null)
-            {
-                if (keyboard.downArrowKey.isPressed) delta += keyScrollSpeed * Time.deltaTime;
-                if (keyboard.upArrowKey.isPressed) delta -= keyScrollSpeed * Time.deltaTime;
-            }
-
-            if (delta == 0f)
+            if (step == 0)
             {
                 return;
             }
 
-            float newY = Mathf.Clamp(contentRect.anchoredPosition.y + delta, 0f, maxScroll);
-            contentRect.anchoredPosition = new Vector2(contentRect.anchoredPosition.x, newY);
+            int next = Mathf.Clamp(pageIndex + step, 0, pages.Count - 1);
+            if (next != pageIndex)
+            {
+                pageIndex = next;
+                ShowPage();
+                SoundBank.Play2D(SoundBank.Instance?.RulebookPageTurn);
+            }
+        }
+
+        private void ShowPage()
+        {
+            if (bodyText != null && pageIndex < pages.Count)
+            {
+                bodyText.text = pages[pageIndex];
+            }
+
+            if (pageIndicatorText != null)
+            {
+                pageIndicatorText.text = $"- {pageIndex + 1} / {pages.Count} -";
+            }
         }
 
 #if UNITY_EDITOR
-        public void EditorConfigure(GameObject panel, Text body, RectTransform content, RectTransform viewport)
+        public void EditorConfigure(GameObject panel, Text body, Text pageIndicator, GameObject hint, GameObject pickupPrompt)
         {
             panelRoot = panel;
             bodyText = body;
-            contentRect = content;
-            viewportRect = viewport;
+            pageIndicatorText = pageIndicator;
+            hintObject = hint;
+            pickupPromptObject = pickupPrompt;
         }
 #endif
     }

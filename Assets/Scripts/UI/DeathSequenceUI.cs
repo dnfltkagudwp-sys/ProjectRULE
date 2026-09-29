@@ -194,7 +194,7 @@ namespace RuleGhost.UI
             yield return new WaitForSeconds(portraitDarkAfterSwap);
 
             RestoreLights();
-            audioSource.PlayOneShot(ProceduralSfx.HarshBurst);
+            PlaySting(SoundBank.Instance?.DeathEyesOpenPortrait, ProceduralSfx.HarshBurst);
             yield return new WaitForSeconds(portraitExposure);
 
             yield return fade.FadeTo(1f, 0f);
@@ -215,6 +215,7 @@ namespace RuleGhost.UI
             AimCameraAt(target);
             SwapToDeathTexture(target, WestIdentityST);
             RestoreLights();
+            PlaySting(SoundBank.Instance?.DeathPersonInLandscape, null);
 
             yield return new WaitForSeconds(landscapeExposure);
             yield return fade.FadeTo(1f, landscapeFadeOut);
@@ -226,7 +227,7 @@ namespace RuleGhost.UI
         private IEnumerator SoundFromExhibitDeath()
         {
             StopExhibitCue();
-            audioSource.PlayOneShot(ProceduralSfx.HarshBurst);
+            PlaySting(SoundBank.Instance?.DeathSoundFromExhibit, ProceduralSfx.HarshBurst);
             yield return Shake(soundShakeDuration, soundShakeMagnitude);
             yield return fade.FadeTo(1f, soundFadeOut);
             yield return new WaitForSeconds(soundBlackHold);
@@ -257,7 +258,7 @@ namespace RuleGhost.UI
                 flash.intensity = 0f;
             }
 
-            audioSource.PlayOneShot(ProceduralSfx.Zap);
+            PlaySting(SoundBank.Instance?.DeathHighHumidity, ProceduralSfx.Zap);
 
             var rng = new System.Random(20260928);
             float elapsed = 0f;
@@ -288,6 +289,7 @@ namespace RuleGhost.UI
         // underneath the fade rather than settling first -- it's cut off, not finished.
         private IEnumerator InspectionDoorWideOpenDeath()
         {
+            PlaySting(SoundBank.Instance?.DeathInspectionDoorWideOpen, null);
             StartCoroutine(TiltCamera(doorTiltDegrees, doorTiltDuration));
             yield return new WaitForSeconds(doorFadeStartDelay);
             yield return fade.FadeTo(1f, doorFadeOut);
@@ -298,7 +300,7 @@ namespace RuleGhost.UI
         private IEnumerator PatrolFailedDeath()
         {
             yield return new WaitForSeconds(failedBeforeKnock);
-            audioSource.PlayOneShot(ProceduralSfx.Knock);
+            PlaySting(SoundBank.Instance?.DeathPatrolFailed, ProceduralSfx.Knock);
             yield return new WaitForSeconds(failedAfterKnock);
 
             DimLight(GuardRoomLightObjectName);
@@ -306,6 +308,16 @@ namespace RuleGhost.UI
 
             yield return fade.FadeTo(1f, failedFadeOut);
             yield return new WaitForSeconds(failedBlackHold);
+        }
+
+        // The SoundBank clip if one is assigned, else the generated placeholder (null = silent).
+        private void PlaySting(AudioClip bankClip, AudioClip fallback)
+        {
+            var clip = bankClip != null ? bankClip : fallback;
+            if (clip != null)
+            {
+                audioSource.PlayOneShot(clip);
+            }
         }
 
         private IEnumerator PlaceholderCut()

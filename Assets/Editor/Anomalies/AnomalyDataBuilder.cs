@@ -161,7 +161,7 @@ namespace RuleGhost.EditorTools
             var am5Pool = new List<AnomalyDefinition> { highHumidity, flippedPainting, doorAjar, doorWideOpen, soundFromExhibit, knockOnDoor };
 
             CreateProfile(1, TimeSlot.AM1, dutyAm1, new List<AnomalyDefinition>(), DifficultyRule.None);
-            CreateProfile(2, TimeSlot.AM5, dutyAm5, am5Pool, DifficultyRule.SingleZeroOrOne);
+            CreateProfile(2, TimeSlot.AM5, dutyAm5, am5Pool, DifficultyRule.SingleOne);
             CreateProfile(3, TimeSlot.AM1, dutyAm1, am1Pool, DifficultyRule.SingleOne);
             CreateProfile(4, TimeSlot.AM5, dutyAm5, am5Pool, DifficultyRule.SingleOne);
             CreateProfile(5, TimeSlot.AM1, dutyAm1, am1Pool, DifficultyRule.CompoundOnly);

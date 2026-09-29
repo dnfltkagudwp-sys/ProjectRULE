@@ -311,6 +311,7 @@ namespace RuleGhost.Anomalies
             Debug.Log($"[PatrolRuntimeController] Checked: {target}");
 
             HandleRoutineAction(target);
+            HandleKnockCue(target);
             HandleAnomalyAction(target);
             CheckLiveRecheckViolation(target);
 
@@ -322,6 +323,24 @@ namespace RuleGhost.Anomalies
                 if (terminal != null)
                 {
                     StartCoroutine(TriggerDeath(terminal.Id));
+                }
+            }
+        }
+
+        // KnockOnDoor's knock plays when the player checks the entrance door while it's active.
+        private void HandleKnockCue(TargetRef target)
+        {
+            if (target.Kind != TargetKind.EntranceDoor)
+            {
+                return;
+            }
+
+            foreach (var anomaly in currentAnomalies)
+            {
+                if (anomaly.Id == "KnockOnDoor")
+                {
+                    anomalyApplier.PlayKnockCue(sceneBindings);
+                    return;
                 }
             }
         }

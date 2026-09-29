@@ -22,6 +22,7 @@ namespace RuleGhost.Debugging
         private bool isOpen;
         private float targetAngle;
         private Transform player;
+        private Camera playerCamera;
         private Collider leafCollider;
 
         private void Awake()
@@ -37,6 +38,26 @@ namespace RuleGhost.Debugging
             PatrolRuntimeController.ResetGuardRoomDoor -= CloseImmediately;
         }
 
+        // Crosshair-style check: the camera's center ray must actually hit this door's leaf first,
+        // so E only works on what the player is looking at (a wall, another object, or the door
+        // behind them all block/miss it). Distance alone let E open the door from anywhere within
+        // range regardless of where the player was facing.
+        public static bool IsLookingAtDoor(Camera camera, Collider leaf, float maxDistance)
+        {
+            if (camera == null || leaf == null)
+            {
+                return false;
+            }
+
+            var ray = new Ray(camera.transform.position, camera.transform.forward);
+            if (!Physics.Raycast(ray, out var hit, maxDistance, ~0, QueryTriggerInteraction.Collide))
+            {
+                return false;
+            }
+
+            return hit.collider == leaf;
+        }
+
         private void CloseImmediately()
         {
             isOpen = false;
@@ -49,17 +70,27 @@ namespace RuleGhost.Debugging
             if (player == null)
             {
                 var controller = FindFirstObjectByType<GrayboxTestController>();
-                if (controller != null) player = controller.transform;
+                if (controller != null)
+                {
+                    player = controller.transform;
+                    playerCamera = controller.GetComponentInChildren<Camera>();
+                }
             }
 
             var keyboard = Keyboard.current;
-            if (keyboard != null && player != null)
+            if (keyboard != null && player != null && keyboard.eKey.wasPressedThisFrame)
             {
                 float dist = Vector3.Distance(player.position, transform.position);
-                if (dist <= interactRange && keyboard.eKey.wasPressedThisFrame)
+                if (dist <= interactRange && IsLookingAtDoor(playerCamera, leafCollider, interactRange + 1f))
                 {
                     isOpen = !isOpen;
                     targetAngle = isOpen ? openAngle : 0f;
+
+                    var bank = SoundBank.Instance;
+                    if (bank != null)
+                    {
+                        SoundBank.PlayAt(isOpen ? bank.GuardDoorOpen : bank.GuardDoorClose, transform.position);
+                    }
                 }
             }
 

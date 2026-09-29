@@ -1,3 +1,4 @@
+using System.IO;
 using RuleGhost.UI;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -6,21 +7,22 @@ using UnityEngine.UI;
 
 namespace RuleGhost.EditorTools
 {
-    // Builds the 규칙서 (rulebook) HUD: a small always-on "Tab: 규칙서" hint plus a full panel,
-    // hidden until Tab is pressed, that RulebookUI fills in from the active PatrolDuty/Anomalies.
-    // Legacy uGUI Text with an OS-dynamic Korean font (Malgun Gothic) rather than TextMeshPro --
-    // this project has never imported TMP's Essential Resources, and a dynamic OS font renders
-    // Korean correctly with zero setup, which is all this panel needs.
-    //
-    // The body sits in a masked viewport with a ContentSizeFitter-driven content object rather
-    // than a Unity ScrollRect -- this project has no EventSystem anywhere (every interaction is
-    // Keyboard.current/Mouse.current polling, see GrayboxTestController/DoorTestInteraction/etc.),
-    // and ScrollRect's mouse-wheel/drag handling needs one. RulebookUI moves the content rect
-    // directly instead, matching how the rest of the project already handles input.
+    // Builds the 규칙서 (rulebook) HUD: a page-of-paper reader (dimmed backdrop + a slightly tilted
+    // sheet with the booklet text on it), the "Tab : 규칙서" hint and the "E : 규칙서 획득" pickup
+    // prompt. RulebookUI hides the panel/hint/prompt until the physical rulebook has been picked up
+    // from the guard room desk (BuildRulebookPickup). Legacy uGUI Text with OS dynamic Korean fonts
+    // (a serif first, so it reads like a printed document) rather than TextMeshPro -- this project
+    // has never imported TMP's Essential Resources. No ScrollRect: pages are turned directly.
     public static class BuildRulebookUI
     {
         private const string ScenePath = "Assets/Scenes/Lobby_Graybox.unity";
-        private const string KoreanFontName = "Malgun Gothic";
+        private const string PaperTexturePath = "Assets/Art/UI/Rulebook_paper_v1.png";
+
+        private static readonly string[] SerifFonts = { "Batang", "Nanum Myeongjo", "Malgun Gothic" };
+        private const string SansFont = "Malgun Gothic";
+
+        private static readonly Color InkColor = new Color(0.13f, 0.09f, 0.07f);
+        private static readonly Color PaperFallbackColor = new Color(0.86f, 0.80f, 0.66f);
 
         [MenuItem("RuleGhost/UI/Build Rulebook UI")]
         public static void Run()
@@ -33,7 +35,8 @@ namespace RuleGhost.EditorTools
                 Object.DestroyImmediate(existing);
             }
 
-            var font = Font.CreateDynamicFontFromOSFont(KoreanFontName, 24);
+            var serif = Font.CreateDynamicFontFromOSFont(SerifFonts, 28);
+            var sans = Font.CreateDynamicFontFromOSFont(SansFont, 24);
 
             var canvasGO = new GameObject("RulebookCanvas", typeof(Canvas), typeof(CanvasScaler));
             var canvas = canvasGO.GetComponent<Canvas>();
@@ -42,67 +45,85 @@ namespace RuleGhost.EditorTools
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1920, 1080);
 
-            var hint = CreateText(canvasGO.transform, "HintText", font, 20, TextAnchor.LowerLeft);
+            var hint = CreateText(canvasGO.transform, "HintText", sans, 20, TextAnchor.LowerLeft);
             hint.text = "Tab : 규칙서";
             hint.color = new Color(1f, 1f, 1f, 0.75f);
             SetAnchors(hint.rectTransform, new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(20f, 20f), new Vector2(300f, 40f));
 
-            // Bigger than before (was 1100x700) -- 9 rules of rule text plain overflowed the old
-            // panel with nothing to clip or scroll it, spilling raw text past the black background.
-            // Height has real slack (measured content ~720px against a first pass at 750px
-            // viewport left only ~30px spare, which real Play Mode font rendering ate into and
-            // clipped the last line) -- deliberately generous now instead of sized to the exact
-            // edit-time measurement, since dynamic-font metrics aren't identical between an
-            // editor-script layout pass and actual Play Mode rendering.
+            var prompt = CreateText(canvasGO.transform, "PickupPrompt", sans, 30, TextAnchor.MiddleCenter);
+            prompt.text = "E : 규칙서 획득";
+            prompt.color = new Color(1f, 1f, 1f, 0.9f);
+            SetAnchors(prompt.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(-300f, -200f), new Vector2(300f, -150f));
+
+            // Full-screen dim; the sheet sits on top of it.
             var panelGO = new GameObject("RulebookPanel", typeof(Image));
             panelGO.transform.SetParent(canvasGO.transform, false);
-            var panelImage = panelGO.GetComponent<Image>();
-            panelImage.color = new Color(0f, 0f, 0f, 0.85f);
-            var panelRect = panelGO.GetComponent<RectTransform>();
-            SetAnchors(panelRect, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                new Vector2(-650f, -520f), new Vector2(650f, 520f));
-            panelGO.SetActive(false);
+            panelGO.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.7f);
+            SetAnchors(panelGO.GetComponent<RectTransform>(), Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
 
-            var title = CreateText(panelGO.transform, "TitleText", font, 32, TextAnchor.UpperLeft);
-            title.text = "규칙서";
-            title.fontStyle = FontStyle.Bold;
-            SetAnchors(title.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(40f, -70f), new Vector2(-40f, -10f));
+            var paperGO = new GameObject("Paper", typeof(Image));
+            paperGO.transform.SetParent(panelGO.transform, false);
+            var paperImage = paperGO.GetComponent<Image>();
+            var paperSprite = LoadPaperSprite();
+            if (paperSprite != null)
+            {
+                paperImage.sprite = paperSprite;
+                // The source scan is a bright ivory -- multiplied down so a full-height sheet
+                // isn't glaring on a mostly dark screen. Tune this Image color in the Inspector.
+                paperImage.color = new Color(0.75f, 0.72f, 0.66f);
+            }
+            else
+            {
+                paperImage.color = PaperFallbackColor;
+            }
+            var paperRect = paperGO.GetComponent<RectTransform>();
+            // 758 x 1040 matches the cropped paper texture's aspect (711x977) so it isn't stretched.
+            SetAnchors(paperRect, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(-379f, -520f), new Vector2(379f, 520f));
+            paperRect.localRotation = Quaternion.Euler(0f, 0f, -1.5f);
 
-            var scrollHint = CreateText(panelGO.transform, "ScrollHintText", font, 18, TextAnchor.UpperLeft);
-            scrollHint.text = "↑↓ 또는 마우스 휠로 스크롤";
-            scrollHint.color = new Color(1f, 1f, 1f, 0.5f);
-            SetAnchors(scrollHint.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(40f, -98f), new Vector2(-40f, -74f));
+            // Sized so page 1 (document header + its 3 rules, the tallest page) fits with real
+            // slack -- dynamic-font metrics differ a little between the editor layout pass and
+            // actual Play Mode rendering, so don't size this to the exact edit-time measurement.
+            var body = CreateText(paperGO.transform, "BodyText", serif, 26, TextAnchor.UpperLeft);
+            body.color = InkColor;
+            body.supportRichText = true;
+            body.lineSpacing = 1.15f;
+            SetAnchors(body.rectTransform, Vector2.zero, Vector2.one, new Vector2(80f, 90f), new Vector2(-80f, -70f));
 
-            // Viewport: clips the content, doesn't move itself. RectMask2D needs no Image to work.
-            var viewportGO = new GameObject("Viewport", typeof(RectMask2D));
-            viewportGO.transform.SetParent(panelGO.transform, false);
-            var viewportRect = viewportGO.GetComponent<RectTransform>();
-            SetAnchors(viewportRect, Vector2.zero, Vector2.one, new Vector2(40f, 40f), new Vector2(-40f, -110f));
-
-            // Content: the thing that actually scrolls. Pivot pinned to its own top so
-            // ContentSizeFitter grows it downward from a fixed top edge instead of from center.
-            var body = CreateText(viewportGO.transform, "BodyText", font, 26, TextAnchor.UpperLeft);
-            var bodyRect = body.rectTransform;
-            bodyRect.anchorMin = new Vector2(0f, 1f);
-            bodyRect.anchorMax = new Vector2(1f, 1f);
-            bodyRect.pivot = new Vector2(0.5f, 1f);
-            bodyRect.anchoredPosition = Vector2.zero;
-            // A freshly added RectTransform keeps its default sizeDelta (100x100) even after the
-            // anchors above are set to fully stretch horizontally -- left unset, that 100 pads the
-            // rect 50px wider than the viewport on each side, and the mask then clips those margins
-            // off the actual text. Zeroing x here is what makes the stretch anchors take effect;
-            // ContentSizeFitter still owns y.
-            bodyRect.sizeDelta = new Vector2(0f, bodyRect.sizeDelta.y);
-            var fitter = body.gameObject.AddComponent<ContentSizeFitter>();
-            fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
-            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            var pageIndicator = CreateText(paperGO.transform, "PageIndicator", serif, 22, TextAnchor.LowerCenter);
+            pageIndicator.color = new Color(InkColor.r, InkColor.g, InkColor.b, 0.7f);
+            SetAnchors(pageIndicator.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 0f),
+                new Vector2(40f, 30f), new Vector2(-40f, 70f));
 
             var rulebook = canvasGO.AddComponent<RulebookUI>();
-            rulebook.EditorConfigure(panelGO, body, bodyRect, viewportRect);
+            rulebook.EditorConfigure(panelGO, body, pageIndicator, hint.gameObject, prompt.gameObject);
+
+            panelGO.SetActive(false);
+            hint.gameObject.SetActive(false);
+            prompt.gameObject.SetActive(false);
 
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
             EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene());
-            Debug.Log("[BuildRulebookUI] Rulebook canvas built and wired.");
+            Debug.Log($"[BuildRulebookUI] Rulebook canvas built and wired (paper texture: {(paperSprite != null ? "yes" : "fallback color")}).");
+        }
+
+        private static Sprite LoadPaperSprite()
+        {
+            if (!File.Exists(Path.Combine(Application.dataPath, "..", PaperTexturePath)))
+            {
+                return null;
+            }
+
+            var importer = (TextureImporter)AssetImporter.GetAtPath(PaperTexturePath);
+            if (importer != null && importer.textureType != TextureImporterType.Sprite)
+            {
+                importer.textureType = TextureImporterType.Sprite;
+                importer.SaveAndReimport();
+            }
+
+            return AssetDatabase.LoadAssetAtPath<Sprite>(PaperTexturePath);
         }
 
         private static Text CreateText(Transform parent, string name, Font font, int fontSize, TextAnchor anchor)
@@ -119,9 +140,6 @@ namespace RuleGhost.EditorTools
             return text;
         }
 
-        // RectTransform anchors expressed as (anchorMin, anchorMax, offsetMin, offsetMax) rather
-        // than a single position+size, since every element here is meant to stay pinned to a
-        // screen edge or stretch to fill its parent regardless of resolution.
         private static void SetAnchors(RectTransform rect, Vector2 anchorMin, Vector2 anchorMax,
             Vector2 offsetMin, Vector2 offsetMax)
         {

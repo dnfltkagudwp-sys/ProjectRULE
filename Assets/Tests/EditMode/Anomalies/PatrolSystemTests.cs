@@ -105,7 +105,7 @@ namespace RuleGhost.Anomalies.Tests
             f.Profiles = new[]
             {
                 Profile(1, TimeSlot.AM1, f.DutyAm1, new List<AnomalyDefinition>(), DifficultyRule.None),
-                Profile(2, TimeSlot.AM5, f.DutyAm5, f.Am5Pool, DifficultyRule.SingleZeroOrOne),
+                Profile(2, TimeSlot.AM5, f.DutyAm5, f.Am5Pool, DifficultyRule.SingleOne),
                 Profile(3, TimeSlot.AM1, f.DutyAm1, f.Am1Pool, DifficultyRule.SingleOne),
                 Profile(4, TimeSlot.AM5, f.DutyAm5, f.Am5Pool, DifficultyRule.SingleOne),
                 Profile(5, TimeSlot.AM1, f.DutyAm1, f.Am1Pool, DifficultyRule.CompoundOnly),
@@ -304,6 +304,21 @@ namespace RuleGhost.Anomalies.Tests
             var rng = new Random(seed);
             var result = PatrolGenerator.Generate(f.Profiles[2], f.RuleSet, rng); // day2 AM1, SingleOne
             Assert.AreEqual(1, result.Anomalies.Count);
+        }
+
+        [Test]
+        public void PatrolGenerator_OnlyTheFirstPatrolCanBeAnomalyFree()
+        {
+            var f = BuildFixture();
+
+            for (int p = 1; p < f.Profiles.Length; p++)
+            {
+                for (int seed = 0; seed < 100; seed++)
+                {
+                    var result = PatrolGenerator.Generate(f.Profiles[p], f.RuleSet, new Random(seed));
+                    Assert.GreaterOrEqual(result.Anomalies.Count, 1, $"patrol {p + 1}, seed {seed}");
+                }
+            }
         }
 
         [Test]

@@ -15,6 +15,15 @@ namespace RuleGhost.UI
 
         public float Alpha => canvasGroup != null ? canvasGroup.alpha : 0f;
 
+        public void SetAlpha(float alpha)
+        {
+            if (canvasGroup != null)
+            {
+                canvasGroup.alpha = alpha;
+                canvasGroup.blocksRaycasts = alpha > 0f;
+            }
+        }
+
         public IEnumerator FadeTo(float target, float duration)
         {
             if (canvasGroup == null)

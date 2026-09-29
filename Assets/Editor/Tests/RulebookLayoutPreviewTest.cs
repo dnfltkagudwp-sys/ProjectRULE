@@ -1,6 +1,6 @@
+using System.Collections.Generic;
 using System.IO;
 using RuleGhost.Anomalies;
-using RuleGhost.UI;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -8,11 +8,9 @@ using UnityEngine.UI;
 
 namespace RuleGhost.EditorTools
 {
-    // One-off visual check for BuildRulebookUI's scroll viewport -- renders the panel with the
-    // real full rule text (read straight off PatrolRuntimeController's own serialized profile
-    // list, the same data RulebookUI.Refresh() uses at runtime) to confirm the body is actually
-    // clipped by the viewport instead of spilling past the panel, both scrolled to the top and
-    // scrolled to the bottom. Doesn't touch or save the scene.
+    // One-off visual check for BuildRulebookUI's paged paper reader: renders every page of the
+    // real rulebook (built from PatrolRuntimeController's own profile list, the same data
+    // RulebookUI uses at runtime) to confirm the text fits the sheet. Doesn't save the scene.
     public static class RulebookLayoutPreviewTest
     {
         private const string ScenePath = "Assets/Scenes/Lobby_Graybox.unity";
@@ -25,47 +23,28 @@ namespace RuleGhost.EditorTools
             Directory.CreateDirectory(Path.Combine(Application.dataPath, "..", OutDir));
 
             var canvasGO = GameObject.Find("RulebookCanvas");
-            if (canvasGO == null)
+            var controller = Object.FindFirstObjectByType<PatrolRuntimeController>();
+            if (canvasGO == null || controller == null)
             {
-                Debug.LogError("[RulebookLayoutPreviewTest] RulebookCanvas not found -- run Build Rulebook UI first.");
-                return;
-            }
-
-            var runtimeGO = GameObject.Find("PatrolRuntimeController");
-            var controller = runtimeGO != null ? runtimeGO.GetComponent<PatrolRuntimeController>() : null;
-            if (controller == null)
-            {
-                Debug.LogError("[RulebookLayoutPreviewTest] Could not find PatrolRuntimeController in scene.");
+                Debug.LogError("[RulebookLayoutPreviewTest] Missing RulebookCanvas or PatrolRuntimeController.");
                 return;
             }
 
             var so = new SerializedObject(controller);
             var sequenceProp = so.FindProperty("patrolSequence");
-            var profiles = new System.Collections.Generic.List<PatrolProfile>();
+            var profiles = new List<PatrolProfile>();
             for (int i = 0; i < sequenceProp.arraySize; i++)
             {
                 profiles.Add(sequenceProp.GetArrayElementAtIndex(i).objectReferenceValue as PatrolProfile);
             }
 
-            string text = RulebookTextBuilder.BuildAll(profiles);
-            Debug.Log($"[RulebookLayoutPreviewTest] Built text length: {text.Length} chars from {profiles.Count} profiles.");
+            var pages = RulebookTextBuilder.BuildPages(profiles);
+            Debug.Log($"[RulebookLayoutPreviewTest] {pages.Count} pages from {profiles.Count} profiles.");
 
-            var panelGO = canvasGO.transform.Find("RulebookPanel").gameObject;
-            panelGO.SetActive(true);
+            canvasGO.transform.Find("RulebookPanel").gameObject.SetActive(true);
+            var body = canvasGO.transform.Find("RulebookPanel/Paper/BodyText").GetComponent<Text>();
+            var indicator = canvasGO.transform.Find("RulebookPanel/Paper/PageIndicator").GetComponent<Text>();
 
-            var bodyText = canvasGO.transform.Find("RulebookPanel/Viewport/BodyText").GetComponent<Text>();
-            bodyText.text = text;
-            var contentRect = bodyText.rectTransform;
-            var viewportRect = canvasGO.transform.Find("RulebookPanel/Viewport").GetComponent<RectTransform>();
-            LayoutRebuilder.ForceRebuildLayoutImmediate(contentRect);
-
-            Debug.Log($"[RulebookLayoutPreviewTest] Content height: {contentRect.rect.height:F0}px, " +
-                      $"Viewport height: {viewportRect.rect.height:F0}px, " +
-                      $"Overflow: {Mathf.Max(0f, contentRect.rect.height - viewportRect.rect.height):F0}px");
-
-            // Screen Space - Camera only for this preview render, so the overlay canvas actually
-            // shows up in a RenderTexture (Screen Space - Overlay draws straight to the display,
-            // not through any camera). Scene is never saved, so this doesn't stick.
             var canvas = canvasGO.GetComponent<Canvas>();
             var camGO = new GameObject("PreviewCam");
             var cam = camGO.AddComponent<Camera>();
@@ -73,17 +52,23 @@ namespace RuleGhost.EditorTools
             cam.backgroundColor = new Color(0.05f, 0.05f, 0.08f);
             cam.orthographic = true;
             cam.orthographicSize = 5f;
-            camGO.transform.position = new Vector3(0f, 0f, -10f);
+            // Far outside the lobby so no scene geometry (statue, walls) shows behind the overlay.
+            camGO.transform.position = new Vector3(0f, 5000f, -10f);
             canvas.renderMode = RenderMode.ScreenSpaceCamera;
             canvas.worldCamera = cam;
             canvas.planeDistance = 5f;
 
-            contentRect.anchoredPosition = new Vector2(contentRect.anchoredPosition.x, 0f);
-            Capture(cam, "rulebook_scrolled_top");
-
-            float maxScroll = Mathf.Max(0f, contentRect.rect.height - viewportRect.rect.height);
-            contentRect.anchoredPosition = new Vector2(contentRect.anchoredPosition.x, maxScroll);
-            Capture(cam, "rulebook_scrolled_bottom");
+            for (int p = 0; p < pages.Count; p++)
+            {
+                body.text = pages[p];
+                indicator.text = $"- {p + 1} / {pages.Count} -";
+                Canvas.ForceUpdateCanvases();
+                LayoutRebuilder.ForceRebuildLayoutImmediate(body.rectTransform);
+                float textHeight = body.preferredHeight;
+                float boxHeight = body.rectTransform.rect.height;
+                Debug.Log($"[RulebookLayoutPreviewTest] page {p + 1}: text {textHeight:F0}px in box {boxHeight:F0}px (overflow {Mathf.Max(0f, textHeight - boxHeight):F0}px)");
+                Capture(cam, $"rulebook_page_{p + 1}");
+            }
 
             Object.DestroyImmediate(camGO);
             Debug.Log($"[RulebookLayoutPreviewTest] Renders written to {OutDir}");
@@ -91,23 +76,22 @@ namespace RuleGhost.EditorTools
 
         private static void Capture(Camera cam, string outName)
         {
-            const int width = 1200, height = 900;
+            const int width = 1920, height = 1080;
             var rt = new RenderTexture(width, height, 24);
             cam.targetTexture = rt;
             cam.Render();
             cam.Render();
 
             RenderTexture.active = rt;
-            var outputTex = new Texture2D(width, height, TextureFormat.RGB24, false);
-            outputTex.ReadPixels(new Rect(0, 0, width, height), 0, 0);
-            outputTex.Apply();
+            var tex = new Texture2D(width, height, TextureFormat.RGB24, false);
+            tex.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+            tex.Apply();
             RenderTexture.active = null;
             cam.targetTexture = null;
             rt.Release();
 
-            string fullDir = Path.Combine(Application.dataPath, "..", OutDir);
-            File.WriteAllBytes(Path.Combine(fullDir, outName + ".png"), outputTex.EncodeToPNG());
-            Object.DestroyImmediate(outputTex);
+            File.WriteAllBytes(Path.Combine(Application.dataPath, "..", OutDir, outName + ".png"), tex.EncodeToPNG());
+            Object.DestroyImmediate(tex);
         }
     }
 }

@@ -6,9 +6,8 @@ namespace RuleGhost.Anomalies
     // Makes a round's generated anomalies actually visible/tangible in the scene: swaps a
     // painting's texture, flips one 180 degrees, opens the inspection door, or shows a
     // humidity reading. Deliberately just the presentation layer -- it does not judge whether
-    // the player corrected anything (that's a future extension of PatrolEvaluator) and does not
-    // implement anything that needs new audio assets yet (SoundFromExhibit, KnockOnDoor are
-    // logged only). Plain C# class (not a MonoBehaviour) so PatrolRuntimeController can own one
+    // the player corrected anything (that's a future extension of PatrolEvaluator). Sounds come
+    // from SoundBank's Inspector slots (an empty slot is silent). Plain C# class (not a MonoBehaviour) so PatrolRuntimeController can own one
     // instance and call ResetAll()/Apply() around each round the same way it already owns a
     // PatrolProgress.
     //
@@ -103,10 +102,12 @@ namespace RuleGhost.Anomalies
 
                     case "InspectionDoorAjar":
                         SetDoorAngle(DoorAjarAngle);
+                        PlayInspectionDoorSound(SoundBank.Instance?.InspectionDoorOpen);
                         break;
 
                     case "InspectionDoorWideOpen":
                         SetDoorAngle(DoorWideOpenAngle);
+                        PlayInspectionDoorSound(SoundBank.Instance?.InspectionDoorOpen);
                         break;
 
                     case "SoundFromExhibit":
@@ -118,8 +119,8 @@ namespace RuleGhost.Anomalies
                         break;
 
                     case "KnockOnDoor":
-                        Debug.Log($"[AnomalyRuntimeApplier] {anomaly.Id} is active but has no audio implementation yet " +
-                                  "(needs real sound assets) -- data/generation only for now.");
+                        // Nothing to show on round start -- the knock itself plays when the player
+                        // checks the entrance door (PlayKnockCue, called from PatrolRuntimeController).
                         break;
 
                     default:
@@ -259,6 +260,34 @@ namespace RuleGhost.Anomalies
         public void CloseInspectionDoor()
         {
             SetDoorAngle(DoorClosedAngle);
+            PlayInspectionDoorSound(SoundBank.Instance?.InspectionDoorClose);
+        }
+
+        // KnockOnDoor's cue: a knock from the other side of the entrance door, played when the
+        // player checks that door ("출입문 점검 중 노크 소리가 들린다면").
+        public void PlayKnockCue(PatrolSceneBindings bindings)
+        {
+            var entrance = bindings?.Resolve(TargetRef.Simple(TargetKind.EntranceDoor));
+            if (entrance == null)
+            {
+                return;
+            }
+
+            SoundBank.PlayAt(SoundBank.Instance?.KnockOnDoorCue, entrance.position);
+        }
+
+        private static void PlayInspectionDoorSound(AudioClip clip)
+        {
+            if (clip == null)
+            {
+                return;
+            }
+
+            var hinge = GameObject.Find("CheckPoint_InspectionDoor_Hinge");
+            if (hinge != null)
+            {
+                SoundBank.PlayAt(clip, hinge.transform.position);
+            }
         }
 
         private static void SetDoorAngle(float angle)
@@ -293,8 +322,16 @@ namespace RuleGhost.Anomalies
                 soundCueSource.spatialBlend = 1f;
                 soundCueSource.maxDistance = 12f;
                 soundCueSource.rolloffMode = AudioRolloffMode.Linear;
-                soundCueSource.clip = GetPlaceholderCueClip();
             }
+
+            // A real clip from the SoundBank if one is assigned, otherwise the generated placeholder.
+            // Set every time (not just on creation) so a slot filled/changed after the first round
+            // takes effect.
+            var bank = SoundBank.Instance;
+            soundCueSource.clip = bank != null && bank.SoundFromExhibitCue != null
+                ? bank.SoundFromExhibitCue
+                : GetPlaceholderCueClip();
+            soundCueSource.loop = bank != null && bank.SoundFromExhibitCueLoop;
 
             soundCueObject.transform.SetParent(t, false);
             soundCueObject.transform.localPosition = Vector3.zero;

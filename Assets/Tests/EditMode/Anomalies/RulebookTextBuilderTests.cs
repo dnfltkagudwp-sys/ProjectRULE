@@ -92,5 +92,63 @@ namespace RuleGhost.Anomalies.Tests
 
             Assert.AreEqual(string.Empty, result);
         }
+
+        [Test]
+        public void BuildPages_SevenRules_ThreePerPage_ThreePages()
+        {
+            var duty = MakeDuty("규칙 1", 1);
+            var anomalies = new List<AnomalyDefinition>();
+            for (int n = 2; n <= 7; n++)
+            {
+                anomalies.Add(MakeAnomaly($"A{n}", $"규칙 {n}", n));
+            }
+            var profile = MakeProfile(duty, anomalies.ToArray());
+
+            var pages = RulebookTextBuilder.BuildPages(new[] { profile }, 3);
+
+            Assert.AreEqual(3, pages.Count);
+            StringAssert.Contains("규칙 1", pages[0]);
+            StringAssert.Contains("규칙 3", pages[0]);
+            StringAssert.DoesNotContain("규칙 4", pages[0]);
+            StringAssert.Contains("규칙 4", pages[1]);
+            StringAssert.Contains("규칙 7", pages[2]);
+        }
+
+        [Test]
+        public void BuildPages_HeaderOnFirstPageOnly_FooterOnLastPageOnly()
+        {
+            var duty = MakeDuty("규칙 1", 1);
+            var anomalies = new[] { MakeAnomaly("A2", "규칙 2", 2), MakeAnomaly("A4", "규칙 4", 4) };
+            var profile = MakeProfile(duty, anomalies);
+
+            var pages = RulebookTextBuilder.BuildPages(new[] { profile }, 2);
+
+            Assert.AreEqual(2, pages.Count);
+            StringAssert.Contains(RulebookTextBuilder.Header, pages[0]);
+            StringAssert.DoesNotContain(RulebookTextBuilder.Header, pages[1]);
+            StringAssert.Contains(RulebookTextBuilder.Footer, pages[1]);
+            StringAssert.DoesNotContain(RulebookTextBuilder.Footer, pages[0]);
+        }
+
+        [Test]
+        public void BuildPages_SinglePage_HasBothHeaderAndFooter()
+        {
+            var duty = MakeDuty("규칙 1", 1);
+            var profile = MakeProfile(duty);
+
+            var pages = RulebookTextBuilder.BuildPages(new[] { profile });
+
+            Assert.AreEqual(1, pages.Count);
+            StringAssert.Contains(RulebookTextBuilder.Header, pages[0]);
+            StringAssert.Contains(RulebookTextBuilder.Footer, pages[0]);
+        }
+
+        [Test]
+        public void BuildPages_NoProfiles_StillOnePage()
+        {
+            var pages = RulebookTextBuilder.BuildPages(null);
+
+            Assert.AreEqual(1, pages.Count);
+        }
     }
 }
