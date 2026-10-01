@@ -18,5 +18,16 @@ namespace RuleGhost.Anomalies
 
             PatrolRuntimeController.Instance?.RecordVisit(TargetRef.Simple(TargetKind.GuardRoomReturn));
         }
+
+        // Walking out of the guard room -- starts SoundFromExhibit's cue, which waits for this.
+        private void OnTriggerExit(Collider other)
+        {
+            if (other.GetComponent<CharacterController>() == null)
+            {
+                return;
+            }
+
+            PatrolRuntimeController.Instance?.NotifyLeftGuardRoom();
+        }
     }
 }

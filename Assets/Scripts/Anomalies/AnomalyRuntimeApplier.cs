@@ -28,6 +28,9 @@ namespace RuleGhost.Anomalies
         private GameObject soundCueObject;
         private AudioSource soundCueSource;
         private static AudioClip placeholderCueClip;
+        // The cue is set up at round start but held until the player first leaves the guard room
+        // (StartPendingSoundCue) -- it shouldn't already be playing while they're still inside.
+        private bool soundCuePending;
 
         // Non-audio counterpart to soundCueObject -- a flickering red point light so the anomaly
         // still reads to a player who can't hear (or has muted) the placeholder audio cue.
@@ -58,6 +61,7 @@ namespace RuleGhost.Anomalies
 
             HygrometerDisplay.Set(bindings, HygrometerDisplay.State.Normal);
 
+            soundCuePending = false;
             if (soundCueSource != null)
             {
                 soundCueSource.Stop();
@@ -112,9 +116,9 @@ namespace RuleGhost.Anomalies
 
                     case "SoundFromExhibit":
                         // FaceExhibit/ShowBackToExhibit's facing window is just "this round" --
-                        // the cue plays immediately when the anomaly is applied (here), so there's
-                        // no separate later trigger moment to wait for; ObservationRuleMonitor
-                        // watches these facing rules for every active anomaly all round anyway.
+                        // the cue is set up here and starts once the player leaves the guard room
+                        // (StartPendingSoundCue); ObservationRuleMonitor watches these facing
+                        // rules for every active anomaly all round anyway.
                         PlaySoundCue(bindings, FirstTarget(anomaly.RequiredActions));
                         break;
 
@@ -276,6 +280,19 @@ namespace RuleGhost.Anomalies
             SoundBank.PlayAt(SoundBank.Instance?.KnockOnDoorCue, entrance.position);
         }
 
+        // The squeak for the player's own flip only -- FlipPainting itself stays silent because it
+        // also runs at round start to set up FlippedPainting, where a sound would give it away.
+        public void PlayPaintingFlipSound(PatrolSceneBindings bindings, TargetRef target)
+        {
+            var t = bindings?.Resolve(target);
+            if (t == null)
+            {
+                return;
+            }
+
+            SoundBank.PlayAt(SoundBank.Instance?.PaintingFlip, t.position);
+        }
+
         private static void PlayInspectionDoorSound(AudioClip clip)
         {
             if (clip == null)
@@ -336,7 +353,7 @@ namespace RuleGhost.Anomalies
             soundCueObject.transform.SetParent(t, false);
             soundCueObject.transform.localPosition = Vector3.zero;
             soundCueObject.SetActive(true);
-            soundCueSource.Play();
+            soundCuePending = true;
 
             if (soundCueLightObject == null)
             {
@@ -351,6 +368,19 @@ namespace RuleGhost.Anomalies
             soundCueLightObject.transform.SetParent(t, false);
             soundCueLightObject.transform.localPosition = Vector3.zero;
             soundCueLightObject.SetActive(true);
+        }
+
+        // Called by PatrolRuntimeController when the player first walks out of the guard room.
+        // No-op on rounds without SoundFromExhibit, and after the first exit of a round.
+        public void StartPendingSoundCue()
+        {
+            if (!soundCuePending || soundCueSource == null)
+            {
+                return;
+            }
+
+            soundCuePending = false;
+            soundCueSource.Play();
         }
 
         private static AudioClip GetPlaceholderCueClip()

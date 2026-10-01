@@ -105,6 +105,9 @@ namespace RuleGhost.Anomalies
         // itself immediately re-firing GuardRoomReturn (see RecordVisit), since the player now
         // spawns literally inside that trigger's volume.
         private float roundStartTime;
+        // The spawn teleport can fire the guard-room trigger's enter/exit within this window; a
+        // genuine walk out or back in takes far longer, so anything sooner is ignored.
+        private const float SpawnGraceSeconds = 1f;
 
         // Guards TriggerDeath against a second violation (in the same or a later frame) starting
         // a second death sequence -- StartCoroutine runs synchronously up to the first yield, so
@@ -283,6 +286,18 @@ namespace RuleGhost.Anomalies
         // room arrival itself would always be. Both AM1's tautological GuardRoomReturn requirement
         // and the terminal-abort path already treat "we're evaluating at all" as proof the player
         // arrived, so nothing downstream needs it recorded.
+        // Called by GuardRoomReturnTrigger when the player walks out of the guard room. Only
+        // SoundFromExhibit's cue cares -- it waits for this instead of playing from round start.
+        public void NotifyLeftGuardRoom()
+        {
+            if (CurrentState != State.PatrolActive || Time.time - roundStartTime < SpawnGraceSeconds)
+            {
+                return;
+            }
+
+            anomalyApplier.StartPendingSoundCue();
+        }
+
         public void RecordVisit(TargetRef target)
         {
             if (CurrentState != State.PatrolActive)
@@ -297,7 +312,6 @@ namespace RuleGhost.Anomalies
                 // OnTriggerEnter the same frame the round starts -- a genuine walk back out and in
                 // takes far longer than this window, so anything this soon after StartPatrolAt is
                 // that spawn artifact, not a real return.
-                const float SpawnGraceSeconds = 1f;
                 if (Time.time - roundStartTime < SpawnGraceSeconds)
                 {
                     return;
@@ -405,6 +419,16 @@ namespace RuleGhost.Anomalies
                 {
                     StartCoroutine(TriggerDeath(violator));
                 }
+                else
+                {
+                    // Button beep for a routine adjustment or a no-op press alike; HighHumidity's
+                    // press goes straight into its death sting instead.
+                    var thermometer = sceneBindings?.Resolve(target);
+                    if (thermometer != null)
+                    {
+                        SoundBank.PlayAt(SoundBank.Instance?.HumidityButton, thermometer.position);
+                    }
+                }
             }
             else if (target.Kind == TargetKind.SpecificPainting)
             {
@@ -436,6 +460,7 @@ namespace RuleGhost.Anomalies
                     if (req.Action == ActionTag.FlipPainting && req.Target.Equals(target))
                     {
                         anomalyApplier.FlipPainting(sceneBindings, target);
+                        anomalyApplier.PlayPaintingFlipSound(sceneBindings, target);
                         CurrentProgress.RecordAction(target, ActionTag.FlipPainting);
                         return;
                     }

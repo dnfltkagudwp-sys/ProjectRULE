@@ -45,6 +45,14 @@ namespace RuleGhost.Anomalies
         [Tooltip("페이지 넘길 때. 0.2~0.5초.")]
         [SerializeField] private AudioClip rulebookPageTurn;
 
+        [Header("전시물")]
+        [Tooltip("플레이어가 뒤집힌 액자를 바로잡을 때 액자 위치에서 3D로 재생. 0.3~0.8초, 짧은 끼익. 라운드 시작 시 이상현상 배치로 뒤집힐 때는 재생 안 함.")]
+        [SerializeField] private AudioClip paintingFlip;
+
+        [Header("습도계")]
+        [Tooltip("습도계에서 E를 누를 때 습도계 위치에서 3D로 재생(습도 조정 / 아무 일 없음 둘 다). 0.2~0.4초, 짧은 삑. 고습도 이상현상 중에는 재생 안 함(사망 연출로 바로 넘어감).")]
+        [SerializeField] private AudioClip humidityButton;
+
         [Header("라운드 / UI")]
         [Tooltip("'N일차 새벽 M시' 글자가 뜰 때. 1~3초, 낮고 짧은 울림.")]
         [SerializeField] private AudioClip roundIntro;
@@ -88,6 +96,8 @@ namespace RuleGhost.Anomalies
         public AudioClip RulebookOpen => rulebookOpen;
         public AudioClip RulebookClose => rulebookClose;
         public AudioClip RulebookPageTurn => rulebookPageTurn;
+        public AudioClip PaintingFlip => paintingFlip;
+        public AudioClip HumidityButton => humidityButton;
         public AudioClip RoundIntro => roundIntro;
         public AudioClip TitleStart => titleStart;
         public AudioClip SoundFromExhibitCue => soundFromExhibitCue;
