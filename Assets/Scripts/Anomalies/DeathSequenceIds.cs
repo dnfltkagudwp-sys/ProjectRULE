@@ -11,6 +11,7 @@ namespace RuleGhost.Anomalies
         public const string SoundFromExhibit = "SoundFromExhibit";
         public const string HighHumidity = "HighHumidity";
         public const string InspectionDoorWideOpen = "InspectionDoorWideOpen";
+        public const string KnockOnDoor = "KnockOnDoor";
         public const string PatrolFailed = "PatrolFailed";
     }
 }

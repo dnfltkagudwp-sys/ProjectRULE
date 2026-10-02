@@ -60,6 +60,7 @@ namespace RuleGhost.Anomalies
         private readonly LooseObservationTracker looseObservationTracker = new();
         private readonly RoutinePatrolState routineState = new();
         private readonly TerminalAbortState terminalAbortState = new();
+        private readonly KnockOnDoorState knockState = new();
         private Camera playerCamera;
         private Transform playerRoot;
         private bool loggedMissingCameraWarning;
@@ -133,6 +134,7 @@ namespace RuleGhost.Anomalies
         {
             if (CurrentState != State.PatrolActive)
             {
+                knockState.StopAudio();
                 return;
             }
 
@@ -161,6 +163,12 @@ namespace RuleGhost.Anomalies
                     {
                         StartCoroutine(TriggerDeath(terminal.Id));
                     }
+                }
+
+                // The knock starts on proximity and stops on a timer -- neither is an E-key event.
+                if (IsAnomalyActive(DeathSequenceIds.KnockOnDoor))
+                {
+                    knockState.Tick(Time.deltaTime, playerRoot, sceneBindings);
                 }
 
                 // Gaze/facing forbidden actions (MakeEyeContact, ShowBackToExhibit) are judged
@@ -238,6 +246,7 @@ namespace RuleGhost.Anomalies
             notifiedViolations.Clear();
             notifiedSatisfactions.Clear();
             terminalAbortState.ResetForRound();
+            knockState.ResetForRound();
             roundStartTime = Time.time;
 
             anomalyApplier.ResetAll(sceneBindings);
@@ -325,7 +334,7 @@ namespace RuleGhost.Anomalies
             Debug.Log($"[PatrolRuntimeController] Checked: {target}");
 
             HandleRoutineAction(target);
-            HandleKnockCue(target);
+            HandleKnockVisit(target);
             HandleAnomalyAction(target);
             CheckLiveRecheckViolation(target);
 
@@ -341,22 +350,39 @@ namespace RuleGhost.Anomalies
             }
         }
 
-        // KnockOnDoor's knock plays when the player checks the entrance door while it's active.
-        private void HandleKnockCue(TargetRef target)
+        // KnockOnDoor's E-key side (see KnockOnDoorState): E on the entrance while it's still
+        // knocking is the forbidden "touching the door" and fails on the spot; E after it has
+        // stopped is the required check, recorded for PatrolEvaluator to read at round end.
+        private void HandleKnockVisit(TargetRef target)
         {
-            if (target.Kind != TargetKind.EntranceDoor)
+            if (target.Kind != TargetKind.EntranceDoor || !IsAnomalyActive(DeathSequenceIds.KnockOnDoor))
             {
                 return;
             }
 
+            switch (knockState.NotifyEntranceVisit(sceneBindings))
+            {
+                case KnockOnDoorState.VisitOutcome.Violated:
+                    CurrentProgress.RecordAction(target, ActionTag.OperateEntranceDoor);
+                    StartCoroutine(TriggerDeath(DeathSequenceIds.KnockOnDoor));
+                    break;
+
+                case KnockOnDoorState.VisitOutcome.Checked:
+                    CurrentProgress.RecordAction(target, ActionTag.KeepDistanceAndWait);
+                    break;
+            }
+        }
+
+        private bool IsAnomalyActive(string id)
+        {
             foreach (var anomaly in currentAnomalies)
             {
-                if (anomaly.Id == "KnockOnDoor")
+                if (anomaly.Id == id)
                 {
-                    anomalyApplier.PlayKnockCue(sceneBindings);
-                    return;
+                    return true;
                 }
             }
+            return false;
         }
 
         private ResolvedAnomaly FindTerminalAnomaly()

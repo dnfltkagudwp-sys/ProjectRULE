@@ -45,10 +45,13 @@ namespace RuleGhost.Anomalies
     // at round end as the authoritative source of truth (and the only path for the few forbidden
     // actions that stay visit-based here, like AdjustThermostat).
     //
-    // FlippedPainting's ModifyOriginalPainting and KnockOnDoor's OperateEntranceDoor still can't be
-    // judged: their target is otherwise mandatory to visit (every painting per Duty_AM1; the
-    // entrance, for an AM5 round, to end it), so a mere visit can't mean "did the forbidden thing"
-    // -- unaffected by any of the paths above.
+    // KnockOnDoor's pair (KeepDistanceAndWait / OperateEntranceDoor) is a specific-action signal
+    // too: KnockOnDoorState decides from live timing whether an entrance E-press came during or
+    // after the knock, and PatrolRuntimeController records the matching tag.
+    //
+    // FlippedPainting's ModifyOriginalPainting still can't be judged: its target is otherwise
+    // mandatory to visit (every painting per Duty_AM1), so a mere visit can't mean "did the
+    // forbidden thing" -- unaffected by any of the paths above.
     public static class PatrolEvaluator
     {
         private static readonly PaintingWall[] AllWalls = { PaintingWall.North, PaintingWall.West, PaintingWall.East };
@@ -179,6 +182,16 @@ namespace RuleGhost.Anomalies
                             missingRechecks.Add(anomaly.Id);
                         }
                     }
+                    else if (req.Action == ActionTag.KeepDistanceAndWait)
+                    {
+                        // KnockOnDoor's check after the knock stops -- recorded by
+                        // PatrolRuntimeController from KnockOnDoorState, not a plain visit (the
+                        // entrance is visited anyway for the duty).
+                        if (!progress.HasPerformedAction(req.Target, ActionTag.KeepDistanceAndWait))
+                        {
+                            missingRechecks.Add(anomaly.Id);
+                        }
+                    }
                     else if (req.Target.Kind != TargetKind.WholePatrol)
                     {
                         required.Add(req.Target);
@@ -212,6 +225,15 @@ namespace RuleGhost.Anomalies
                     else if (forbid.Action == ActionTag.RecheckExhibit)
                     {
                         if (progress.VisitCount(forbid.Target) >= RecheckVisitThreshold)
+                        {
+                            forbiddenTaken.Add(anomaly.Id);
+                        }
+                    }
+                    else if (forbid.Action == ActionTag.OperateEntranceDoor)
+                    {
+                        // E on the entrance while it was still knocking (KnockOnDoorState) -- a
+                        // plain visit can't mean this, since AM5 always visits the entrance.
+                        if (progress.HasPerformedAction(forbid.Target, ActionTag.OperateEntranceDoor))
                         {
                             forbiddenTaken.Add(anomaly.Id);
                         }

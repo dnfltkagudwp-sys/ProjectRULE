@@ -64,15 +64,17 @@ namespace RuleGhost.Anomalies
         [SerializeField] private AudioClip soundFromExhibitCue;
         [Tooltip("켜면 목소리가 순찰 내내 반복 재생, 끄면 한 번만.")]
         [SerializeField] private bool soundFromExhibitCueLoop;
-        [Tooltip("출입문을 점검할 때 문 밖에서 나는 노크. 출입문 위치에서 3D로 재생. 1~3초.")]
+        [Tooltip("출입문에 가까이 가면 문 밖에서 나는 노크. 출입문 위치에서 3D로 재생. 노크가 이어지는 동안 E를 누르면 실패, 멎은 뒤 눌러야 점검 완료.")]
         [SerializeField] private AudioClip knockOnDoorCue;
+        [Tooltip("노크 클립을 몇 번 이어서 재생할지. 클립 길이 × 이 값이 플레이어가 기다려야 하는 시간.")]
+        [SerializeField, Min(1)] private int knockOnDoorCueRepeat = 2;
 
         [Header("사망 연출 (스팅)")]
         [Tooltip("초상화가 눈을 마주쳤을 때. 조명이 돌아오는 순간 재생. 0.3~1초, 날카로운 충격.")]
         [SerializeField] private AudioClip deathEyesOpenPortrait;
         [Tooltip("풍경화 속 사람을 계속 쳐다봤을 때. 그림이 바뀌어 보이는 순간. 1~2초, 낮은 울림.")]
         [SerializeField] private AudioClip deathPersonInLandscape;
-        [Tooltip("목소리가 나는 전시물에 등을 보였을 때. 시작하는 순간. 0.3~1초, 뒤통수에서 터지는 충격.")]
+        [Tooltip("목소리가 나는 전시물에 등을 보였을 때. 연출 자체는 전시물 목소리를 머리 뒤에서 재생하는 것이고, 이 슬롯은 화면이 끊기는 순간에 덧붙이는 소리(선택). 비워두면 무음으로 끊김.")]
         [SerializeField] private AudioClip deathSoundFromExhibit;
         [Tooltip("습도계를 건드렸을 때. 화면이 깨지기 시작하는 순간. 0.3~1초, 전기가 튀는 소리.")]
         [SerializeField] private AudioClip deathHighHumidity;
@@ -103,6 +105,8 @@ namespace RuleGhost.Anomalies
         public AudioClip SoundFromExhibitCue => soundFromExhibitCue;
         public bool SoundFromExhibitCueLoop => soundFromExhibitCueLoop;
         public AudioClip KnockOnDoorCue => knockOnDoorCue;
+        public int KnockOnDoorCueRepeat => knockOnDoorCueRepeat;
+        public float SfxVolume => sfxVolume;
         public AudioClip DeathEyesOpenPortrait => deathEyesOpenPortrait;
         public AudioClip DeathPersonInLandscape => deathPersonInLandscape;
         public AudioClip DeathSoundFromExhibit => deathSoundFromExhibit;

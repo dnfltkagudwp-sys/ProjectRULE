@@ -9,7 +9,7 @@ namespace RuleGhost.Anomalies
     // that should've been left alone) -- MissingObservations -- ids of active anomalies whose
     // gaze/facing-based required action (e.g. turning away from a landscape) was never satisfied
     // this round -- MissingRechecks -- ids of active anomalies whose required RecheckExhibit
-    // (E-key re-interaction) never happened -- and MissingRoutineTasks -- ordinary (non-Anomaly)
+    // (E-key re-interaction), or KnockOnDoor's check after the knock stops, never happened -- and MissingRoutineTasks -- ordinary (non-Anomaly)
     // Routine conditions this round (a crooked painting, an out-of-range humidity reading) that
     // were never resolved, identified by short fixed labels ("TiltedPainting"/"RoutineHumidity")
     // rather than an id, since a Routine condition has no AnomalyDefinition/id of its own.

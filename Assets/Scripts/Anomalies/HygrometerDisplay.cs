@@ -7,8 +7,9 @@ namespace RuleGhost.Anomalies
     // and lookup live in one place instead of being duplicated across the two callers.
     // Baked-texture display: each state is a fixed pre-rendered material (digital readout,
     // warning icon and all) swapped onto the hygrometer's own renderer, replacing the old
-    // floating TextMesh + flat-color tint approach.
-    internal static class HygrometerDisplay
+    // floating TextMesh + flat-color tint approach. Public so DeathSequenceUI's HighHumidity
+    // glitch can cycle the same materials.
+    public static class HygrometerDisplay
     {
         private const string NormalMaterialPath = "Assets/Art/Checkpoints/Hygrometer/M_Hygrometer_Normal.mat";
         private const string RoutineMaterialPath = "Assets/Art/Checkpoints/Hygrometer/M_Hygrometer_Routine.mat";
@@ -35,6 +36,12 @@ namespace RuleGhost.Anomalies
             {
                 renderer.sharedMaterial = mat;
             }
+        }
+
+        // Every state's material, in State order; entries are null wherever LoadMaterial can't load.
+        public static Material[] LoadAllStates()
+        {
+            return new[] { LoadMaterial(State.Normal), LoadMaterial(State.Routine), LoadMaterial(State.Anomaly) };
         }
 
         private static Material LoadMaterial(State state)

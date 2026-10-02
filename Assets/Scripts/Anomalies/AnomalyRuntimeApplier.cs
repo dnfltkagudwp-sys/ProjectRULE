@@ -123,8 +123,8 @@ namespace RuleGhost.Anomalies
                         break;
 
                     case "KnockOnDoor":
-                        // Nothing to show on round start -- the knock itself plays when the player
-                        // checks the entrance door (PlayKnockCue, called from PatrolRuntimeController).
+                        // Nothing to show on round start -- the knock starts once the player nears
+                        // the entrance door (KnockOnDoorState, ticked by PatrolRuntimeController).
                         break;
 
                     default:
@@ -265,19 +265,6 @@ namespace RuleGhost.Anomalies
         {
             SetDoorAngle(DoorClosedAngle);
             PlayInspectionDoorSound(SoundBank.Instance?.InspectionDoorClose);
-        }
-
-        // KnockOnDoor's cue: a knock from the other side of the entrance door, played when the
-        // player checks that door ("출입문 점검 중 노크 소리가 들린다면").
-        public void PlayKnockCue(PatrolSceneBindings bindings)
-        {
-            var entrance = bindings?.Resolve(TargetRef.Simple(TargetKind.EntranceDoor));
-            if (entrance == null)
-            {
-                return;
-            }
-
-            SoundBank.PlayAt(SoundBank.Instance?.KnockOnDoorCue, entrance.position);
         }
 
         // The squeak for the player's own flip only -- FlipPainting itself stays silent because it

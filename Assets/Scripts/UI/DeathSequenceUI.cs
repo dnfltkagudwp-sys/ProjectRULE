@@ -11,7 +11,7 @@ namespace RuleGhost.UI
     // returns and calls StartPatrolAt(0), whose RoundIntroShow starts from that same already-black
     // ScreenFadeController, so there is no separate fade-out here and no seam between the two.
     //
-    // Every sequence restores whatever it touched (camera offset, light intensities, readout text,
+    // Every sequence restores whatever it touched (camera offset, light intensities, hygrometer material,
     // swapped painting, spawned objects) before returning -- all of it happens under full black, so
     // the revert is invisible -- and OnDisable repeats that restore, since a coroutine stopped
     // mid-flight (Play Mode exit, object disabled) never runs the code after its current yield.
@@ -43,16 +43,20 @@ namespace RuleGhost.UI
         [SerializeField] private float landscapeBlackHold = 0.9f;
 
         [Header("Sound-from-exhibit death")]
-        [Tooltip("Seconds of camera jolt after the sting.")]
-        [SerializeField] private float soundShakeDuration = 0.28f;
-        [Tooltip("Jolt distance in metres, not seconds.")]
-        [SerializeField] private float soundShakeMagnitude = 0.1f;
-        [SerializeField] private float soundFadeOut = 0.08f;
+        [Tooltip("Seconds the exhibit's voice plays right behind the player's head before the hard cut.")]
+        [SerializeField] private float soundBehindDuration = 1.2f;
+        [Tooltip("Where the voice is placed, in the camera's local space (metres). Off to one side on purpose: Unity's default panning can't tell front from back, so dead behind would sound dead ahead.")]
+        [SerializeField] private Vector3 soundBehindOffset = new(-0.35f, 0f, -0.35f);
+        [SerializeField, Range(0f, 1f)] private float soundBehindVolume = 1f;
         [SerializeField] private float soundBlackHold = 0.9f;
 
         [Header("High-humidity death (seconds)")]
-        [Tooltip("How long the readout garbles and the light stutters.")]
-        [SerializeField] private float humidityGlitchDuration = 0.55f;
+        [Tooltip("How long the hygrometer glitches and the light stutters.")]
+        [SerializeField] private float humidityGlitchDuration = 1f;
+        [Tooltip("Seconds between display swaps -- around a frame or two, so it reads as a fault rather than the device changing state.")]
+        [SerializeField] private float humidityGlitchInterval = 0.025f;
+        [Tooltip("Chance per swap that the hygrometer drops out entirely for that step.")]
+        [SerializeField, Range(0f, 1f)] private float humidityBlankChance = 0.2f;
         [SerializeField] private float humidityFadeOut = 0.08f;
         [SerializeField] private float humidityBlackHold = 0.9f;
 
@@ -85,7 +89,6 @@ namespace RuleGhost.UI
         // through PatrolSceneBindings) for the same reason AnomalyRuntimeApplier looks up the
         // inspection door hinge that way -- they're fixed, single-instance scene objects.
         private const string ExhibitCueObjectName = "AnomalySoundCue";
-        private const string HumidityReadoutObjectName = "HumidityReadout";
         private const string GuardRoomLightObjectName = "Point_GuardRoom";
 
         // Same texture-orientation convention as AnomalyRuntimeApplier/ApplyPaintingBaseTextures:
@@ -95,17 +98,15 @@ namespace RuleGhost.UI
 
         private AudioSource audioSource;
 
-        private Transform shakenCamera;
-        private Vector3 shakenCameraBaseLocalPos;
         private Transform tiltedCamera;
         private Quaternion tiltedCameraBaseRotation;
         private Transform aimedCamera;
         private Quaternion aimedCameraBaseLocalRotation;
         private readonly List<(Light light, float intensity)> dimmedLights = new();
-        private TextMesh garbledText;
-        private string garbledTextBase;
-        private Color garbledTextBaseColor;
+        private Renderer glitchedRenderer;
+        private Material glitchedMaterialBefore;
         private GameObject spawnedFlash;
+        private GameObject spawnedBehindVoice;
         private Renderer swappedRenderer;
         private MaterialPropertyBlock swappedBlockBefore;
 
@@ -161,6 +162,10 @@ namespace RuleGhost.UI
                     break;
 
                 case DeathSequenceIds.InspectionDoorWideOpen:
+                // Shares the tilt for now: the player is at the entrance, nowhere near the guard
+                // room lamp PatrolFailed's sequence dims, and its knock sting would just repeat
+                // the knock they were told to wait out.
+                case DeathSequenceIds.KnockOnDoor:
                     yield return InspectionDoorWideOpenDeath();
                     break;
 
@@ -223,34 +228,49 @@ namespace RuleGhost.UI
         }
 
         // Deliberately shows nothing: the player has their back to the exhibit, so the horror is
-        // that the sound they were walking away from is suddenly behind their head instead.
+        // that the voice they were walking away from is suddenly right behind their head -- the
+        // same voice, not a new sting, so it reads instantly. No shake, so nothing competes with
+        // it; the cut to black is instant and takes the voice with it.
         private IEnumerator SoundFromExhibitDeath()
         {
+            var cue = FindExhibitCueSource();
+            var clip = cue != null && cue.clip != null ? cue.clip : SoundBank.Instance?.SoundFromExhibitCue;
+            float from = cue != null && cue.isPlaying ? cue.time : 0f;
             StopExhibitCue();
-            PlaySting(SoundBank.Instance?.DeathSoundFromExhibit, ProceduralSfx.HarshBurst);
-            yield return Shake(soundShakeDuration, soundShakeMagnitude);
-            yield return fade.FadeTo(1f, soundFadeOut);
+
+            if (clip != null)
+            {
+                PlayVoiceBehindHead(clip, FindVoicedTime(clip, from));
+            }
+            yield return new WaitForSeconds(soundBehindDuration);
+
+            StopVoiceBehindHead();
+            // Optional hit on the cut itself -- an empty slot just cuts to silence.
+            PlaySting(SoundBank.Instance?.DeathSoundFromExhibit, null);
+            yield return fade.FadeTo(1f, 0f);
             yield return new WaitForSeconds(soundBlackHold);
         }
 
-        // Not an electrical accident -- the readout stops being a number at all, and the room is
+        // Not an electrical accident -- the display can't hold any one state, flickering between
+        // all of them (and out entirely) faster than a real reading ever changes, and the room is
         // lit for an instant by something far brighter than the gallery's own lamps.
         private IEnumerator HighHumidityDeath()
         {
-            var readout = GameObject.Find(HumidityReadoutObjectName);
-            var readoutText = readout != null ? readout.GetComponent<TextMesh>() : null;
-            if (readoutText != null)
+            var controller = PatrolRuntimeController.Instance;
+            var bindings = controller != null ? controller.SceneBindings : null;
+            var hygrometer = bindings != null ? bindings.Resolve(TargetRef.Simple(TargetKind.Thermometer)) : null;
+            var renderer = hygrometer != null ? hygrometer.GetComponent<Renderer>() : null;
+            var states = HygrometerDisplay.LoadAllStates();
+            if (renderer != null)
             {
-                garbledText = readoutText;
-                garbledTextBase = readoutText.text;
-                garbledTextBaseColor = readoutText.color;
-                readoutText.color = Color.red;
+                glitchedRenderer = renderer;
+                glitchedMaterialBefore = renderer.sharedMaterial;
             }
 
-            if (readout != null)
+            if (hygrometer != null)
             {
                 spawnedFlash = new GameObject("DeathFlash");
-                spawnedFlash.transform.position = readout.transform.position;
+                spawnedFlash.transform.position = hygrometer.position;
                 var flash = spawnedFlash.AddComponent<Light>();
                 flash.type = LightType.Point;
                 flash.color = new Color(0.85f, 0.9f, 1f);
@@ -262,14 +282,30 @@ namespace RuleGhost.UI
 
             var rng = new System.Random(20260928);
             float elapsed = 0f;
-            float nextGarble = 0f;
+            float nextSwap = 0f;
+            int lastState = -1;
             while (elapsed < humidityGlitchDuration)
             {
                 elapsed += Time.deltaTime;
-                if (garbledText != null && elapsed >= nextGarble)
+                if (glitchedRenderer != null && elapsed >= nextSwap)
                 {
-                    nextGarble = elapsed + 0.04f;
-                    garbledText.text = RandomGlyphs(rng, garbledTextBase.Length);
+                    nextSwap = elapsed + humidityGlitchInterval;
+                    bool blank = rng.NextDouble() < humidityBlankChance;
+                    glitchedRenderer.enabled = !blank;
+                    if (!blank)
+                    {
+                        // Never the same state twice in a row, so every visible step is a change.
+                        int i = rng.Next(states.Length);
+                        if (i == lastState)
+                        {
+                            i = (i + 1) % states.Length;
+                        }
+                        lastState = i;
+                        if (states[i] != null)
+                        {
+                            glitchedRenderer.sharedMaterial = states[i];
+                        }
+                    }
                 }
                 if (spawnedFlash != null)
                 {
@@ -435,28 +471,89 @@ namespace RuleGhost.UI
 #endif
         }
 
-        private static string RandomGlyphs(System.Random rng, int length)
-        {
-            const string glyphs = "▓█▒░#%&@!?";
-            var chars = new char[Mathf.Max(2, length)];
-            for (int i = 0; i < chars.Length; i++)
-            {
-                chars[i] = glyphs[rng.Next(glyphs.Length)];
-            }
-            return new string(chars);
-        }
-
-        // The exhibit's cue is a one-shot placeholder tone today, so this is usually a no-op --
-        // it's here so that the moment a real looping "voice from the painting" clip replaces it,
-        // the sound cutting dead at the instant of death already works.
+        // Cuts the painting's own voice dead at the instant of death (it may be looping all round).
         private void StopExhibitCue()
         {
-            var cue = GameObject.Find(ExhibitCueObjectName);
-            var source = cue != null ? cue.GetComponent<AudioSource>() : null;
+            var source = FindExhibitCueSource();
             if (source != null)
             {
                 source.Stop();
             }
+        }
+
+        private static AudioSource FindExhibitCueSource()
+        {
+            var cue = GameObject.Find(ExhibitCueObjectName);
+            return cue != null ? cue.GetComponent<AudioSource>() : null;
+        }
+
+        // Parented to the camera so it stays at the player's ear for the whole beat.
+        private void PlayVoiceBehindHead(AudioClip clip, float startTime)
+        {
+            var camera = ResolvePlayerCamera();
+            if (camera == null)
+            {
+                return;
+            }
+
+            spawnedBehindVoice = new GameObject("DeathVoiceBehind");
+            spawnedBehindVoice.transform.SetParent(camera, false);
+            spawnedBehindVoice.transform.localPosition = soundBehindOffset;
+            var source = spawnedBehindVoice.AddComponent<AudioSource>();
+            source.playOnAwake = false;
+            source.spatialBlend = 1f;
+            // Inside minDistance there's no attenuation, so the offset only steers the panning.
+            source.minDistance = 1f;
+            source.loop = true;
+            source.clip = clip;
+            source.volume = soundBehindVolume * (SoundBank.Instance != null ? SoundBank.Instance.SfxVolume : 1f);
+            source.time = Mathf.Clamp(startTime, 0f, clip.length - 0.01f);
+            source.Play();
+        }
+
+        private void StopVoiceBehindHead()
+        {
+            if (spawnedBehindVoice != null)
+            {
+                spawnedBehindVoice.GetComponent<AudioSource>().Stop();
+            }
+        }
+
+        // The joined voice clip has short silences between phrases; starting inside one would
+        // leave the whole beat silent, so skip ahead (wrapping) to the next 10ms window that's
+        // actually voiced. GetData needs Decompress On Load (Unity's default for a short clip);
+        // any other load type just starts where the cue was.
+        private static float FindVoicedTime(AudioClip clip, float from)
+        {
+            const float VoicedRms = 0.0056f; // about -45 dBFS, the same line the gaps were trimmed at
+            if (clip.loadType != AudioClipLoadType.DecompressOnLoad)
+            {
+                return from;
+            }
+
+            int window = clip.frequency / 100;
+            var buffer = new float[window * clip.channels];
+            int total = clip.samples;
+            int start = Mathf.Clamp((int)(from * clip.frequency), 0, total - 1);
+            for (int scanned = 0; scanned < total; scanned += window)
+            {
+                int pos = (start + scanned) % total;
+                if (pos + window > total || !clip.GetData(buffer, pos))
+                {
+                    continue;
+                }
+
+                double acc = 0;
+                foreach (float v in buffer)
+                {
+                    acc += v * v;
+                }
+                if (Math.Sqrt(acc / buffer.Length) >= VoicedRms)
+                {
+                    return (float)pos / clip.frequency;
+                }
+            }
+            return from;
         }
 
         // Same lookup PatrolRuntimeController uses for its own gaze checks -- the player camera is
@@ -525,31 +622,6 @@ namespace RuleGhost.UI
             }
         }
 
-        private IEnumerator Shake(float duration, float magnitude)
-        {
-            var camera = ResolvePlayerCamera();
-            if (camera == null)
-            {
-                yield break;
-            }
-
-            shakenCamera = camera;
-            shakenCameraBaseLocalPos = shakenCamera.localPosition;
-
-            float elapsed = 0f;
-            while (elapsed < duration)
-            {
-                elapsed += Time.deltaTime;
-                float falloff = Mathf.Clamp01(1f - elapsed / duration);
-                shakenCamera.localPosition = shakenCameraBaseLocalPos +
-                                             UnityEngine.Random.insideUnitSphere * (magnitude * falloff);
-                yield return null;
-            }
-
-            shakenCamera.localPosition = shakenCameraBaseLocalPos;
-            shakenCamera = null;
-        }
-
         // Kills every light in the scene for a beat -- the gallery spots, the guard room lamp and
         // the player's own flashlight alike. Used to cover a texture swap: the painting changes in
         // the dark, so the player sees the result rather than the switch.
@@ -589,12 +661,6 @@ namespace RuleGhost.UI
 
         private void RestoreAll()
         {
-            if (shakenCamera != null)
-            {
-                shakenCamera.localPosition = shakenCameraBaseLocalPos;
-                shakenCamera = null;
-            }
-
             if (tiltedCamera != null)
             {
                 tiltedCamera.localRotation = tiltedCameraBaseRotation;
@@ -610,11 +676,12 @@ namespace RuleGhost.UI
 
             RestoreLights();
 
-            if (garbledText != null)
+            if (glitchedRenderer != null)
             {
-                garbledText.text = garbledTextBase;
-                garbledText.color = garbledTextBaseColor;
-                garbledText = null;
+                glitchedRenderer.sharedMaterial = glitchedMaterialBefore;
+                glitchedRenderer.enabled = true;
+                glitchedRenderer = null;
+                glitchedMaterialBefore = null;
             }
 
             if (swappedRenderer != null)
@@ -631,6 +698,15 @@ namespace RuleGhost.UI
                     Destroy(spawnedFlash);
                 }
                 spawnedFlash = null;
+            }
+
+            if (spawnedBehindVoice != null)
+            {
+                if (Application.isPlaying)
+                {
+                    Destroy(spawnedBehindVoice);
+                }
+                spawnedBehindVoice = null;
             }
         }
 
