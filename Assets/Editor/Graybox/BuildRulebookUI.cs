@@ -46,9 +46,10 @@ namespace RuleGhost.EditorTools
             scaler.referenceResolution = new Vector2(1920, 1080);
 
             var hint = CreateText(canvasGO.transform, "HintText", sans, 20, TextAnchor.LowerLeft);
-            hint.text = "Tab : 규칙서";
+            // Two lines: E is the only other key the patrol uses, and nothing else in the HUD says so.
+            hint.text = "E : 상호작용\nTab : 규칙서";
             hint.color = new Color(1f, 1f, 1f, 0.75f);
-            SetAnchors(hint.rectTransform, new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(20f, 20f), new Vector2(300f, 40f));
+            SetAnchors(hint.rectTransform, new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(20f, 20f), new Vector2(300f, 84f));
 
             var prompt = CreateText(canvasGO.transform, "PickupPrompt", sans, 30, TextAnchor.MiddleCenter);
             prompt.text = "E : 규칙서 획득";

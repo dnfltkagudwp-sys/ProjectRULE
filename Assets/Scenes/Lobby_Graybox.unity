@@ -160,6 +160,7 @@ MonoBehaviour:
   guardDoorClose: {fileID: 8300000, guid: 174720e554da4c50b6ac9462178c6efb, type: 3}
   inspectionDoorOpen: {fileID: 0}
   inspectionDoorClose: {fileID: 8300000, guid: 60ac9303dc8948849510e878f9514f54, type: 3}
+  entranceDoorCheck: {fileID: 8300000, guid: 533e3db5e752c544a9a048342e12be76, type: 3}
   rulebookPickup: {fileID: 8300000, guid: f466f1aedd954f95999b53c38631dc2c, type: 3}
   rulebookOpen: {fileID: 8300000, guid: f466f1aedd954f95999b53c38631dc2c, type: 3}
   rulebookClose: {fileID: 8300000, guid: f466f1aedd954f95999b53c38631dc2c, type: 3}
@@ -10147,7 +10148,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: "Tab : \uADDC\uCE59\uC11C"
+  m_Text: "E : \uC0C1\uD638\uC791\uC6A9\nTab : \uADDC\uCE59\uC11C"
 --- !u!222 &804636611
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -10172,8 +10173,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 160, y: 30}
-  m_SizeDelta: {x: 280, y: 20}
+  m_AnchoredPosition: {x: 160, y: 52}
+  m_SizeDelta: {x: 280, y: 64}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1001 &806638459
 PrefabInstance:
@@ -25869,6 +25870,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: c543d8a614285764facb92db22ecd53a, type: 2}
   combinationRuleSet: {fileID: 11400000, guid: 8b4389b36901f6a4bb29dd0180739a1f, type: 2}
   sceneBindings: {fileID: 1245881123}
+  titleSceneName: Start
 --- !u!114 &2052430263
 MonoBehaviour:
   m_ObjectHideFlags: 0

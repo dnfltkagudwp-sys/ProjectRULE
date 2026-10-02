@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using Random = System.Random;
 
 namespace RuleGhost.Anomalies
@@ -190,6 +191,29 @@ namespace RuleGhost.Anomalies
             }
         }
 
+        // Every patrol passed: the same black screen + label the round intro uses, held a while,
+        // then back to the title (which starts over from Day 1).
+        [SerializeField] private string titleSceneName = "Start";
+        private const string EndingText = "순찰을 마쳤습니다.";
+        private const float EndingHoldSeconds = 3f;
+
+        private IEnumerator PlayEnding()
+        {
+            CurrentState = State.Complete;
+            SetPlayerControlsEnabled?.Invoke(false);
+            Debug.Log("[PatrolRuntimeController] All patrols complete -- ending.");
+
+            if (RoundIntroShow != null)
+            {
+                yield return RoundIntroShow(EndingText);
+            }
+            // Under full black now: stop anything the last round left running (the exhibit voice loops).
+            anomalyApplier.ResetAll(sceneBindings);
+            yield return new WaitForSeconds(EndingHoldSeconds);
+
+            SceneManager.LoadScene(titleSceneName);
+        }
+
         public void StartPatrolAt(int index)
         {
             StartCoroutine(StartPatrolRoutine(index));
@@ -200,6 +224,12 @@ namespace RuleGhost.Anomalies
         // guard clauses stay synchronous (no intro for "sequence exhausted"/misconfiguration).
         private IEnumerator StartPatrolRoutine(int index)
         {
+            if (patrolSequence != null && patrolSequence.Length > 0 && index == patrolSequence.Length)
+            {
+                yield return PlayEnding();
+                yield break;
+            }
+
             if (patrolSequence == null || index < 0 || index >= patrolSequence.Length || patrolSequence[index] == null)
             {
                 CurrentState = State.Idle;
@@ -233,6 +263,7 @@ namespace RuleGhost.Anomalies
             notifiedSatisfactions.Clear();
             terminalAbortState.ResetForRound();
             knockState.ResetForRound();
+            noticeUntil = 0f;
             roundStartTime = Time.time;
 
             anomalyApplier.ResetAll(sceneBindings);
@@ -320,7 +351,7 @@ namespace RuleGhost.Anomalies
             Debug.Log($"[PatrolRuntimeController] Checked: {target}");
 
             HandleRoutineAction(target);
-            HandleKnockVisit(target);
+            HandleEntranceVisit(target);
             HandleAnomalyAction(target);
             CheckLiveRecheckViolation(target);
 
@@ -336,26 +367,41 @@ namespace RuleGhost.Anomalies
             }
         }
 
-        // KnockOnDoor's E-key side (see KnockOnDoorState): E on the entrance while it's still
-        // knocking is the forbidden "touching the door" and fails on the spot; E after it has
-        // stopped is the required check, recorded for PatrolEvaluator to read at round end.
-        private void HandleKnockVisit(TargetRef target)
+        // E on the entrance door. Plain rounds: always a completed check. KnockOnDoor rounds (see
+        // KnockOnDoorState): while it's still knocking it's the forbidden "touching the door" and
+        // fails on the spot; after it has stopped it's the required check, recorded for
+        // PatrolEvaluator. A completed check gets feedback -- the door itself never moves, so
+        // without it there's no telling whether the press registered.
+        private void HandleEntranceVisit(TargetRef target)
         {
-            if (target.Kind != TargetKind.EntranceDoor || !IsAnomalyActive(DeathSequenceIds.KnockOnDoor))
+            if (target.Kind != TargetKind.EntranceDoor)
             {
                 return;
             }
 
-            switch (knockState.NotifyEntranceVisit(sceneBindings))
+            if (IsAnomalyActive(DeathSequenceIds.KnockOnDoor))
             {
-                case KnockOnDoorState.VisitOutcome.Violated:
-                    CurrentProgress.RecordAction(target, ActionTag.OperateEntranceDoor);
-                    StartCoroutine(TriggerDeath(DeathSequenceIds.KnockOnDoor));
-                    break;
+                switch (knockState.NotifyEntranceVisit(sceneBindings))
+                {
+                    case KnockOnDoorState.VisitOutcome.Violated:
+                        CurrentProgress.RecordAction(target, ActionTag.OperateEntranceDoor);
+                        StartCoroutine(TriggerDeath(DeathSequenceIds.KnockOnDoor));
+                        return;
 
-                case KnockOnDoorState.VisitOutcome.Checked:
-                    CurrentProgress.RecordAction(target, ActionTag.KeepDistanceAndWait);
-                    break;
+                    case KnockOnDoorState.VisitOutcome.Checked:
+                        CurrentProgress.RecordAction(target, ActionTag.KeepDistanceAndWait);
+                        break;
+
+                    default:
+                        return; // the press only started the knock
+                }
+            }
+
+            ShowNotice(EntranceCheckedNotice);
+            var entrance = sceneBindings?.Resolve(target);
+            if (entrance != null)
+            {
+                SoundBank.PlayAt(SoundBank.Instance?.EntranceDoorCheck, entrance.position);
             }
         }
 
@@ -672,6 +718,21 @@ namespace RuleGhost.Anomalies
         // pass/fail and rule-violation debug boxes are gone (results are still logged by
         // FinishPatrol/TriggerDeath). Hidden during the intro and death sequences, which own the screen.
         private GUIStyle roundLabelStyle;
+        private GUIStyle noticeStyle;
+
+        // A short line at the bottom centre for actions that have no visible effect of their own
+        // (the entrance check). Fades out over its last NoticeFadeSeconds.
+        private const string EntranceCheckedNotice = "출입문이 잠겨 있다.";
+        private const float NoticeSeconds = 2f;
+        private const float NoticeFadeSeconds = 0.5f;
+        private string noticeText;
+        private float noticeUntil;
+
+        private void ShowNotice(string text)
+        {
+            noticeText = text;
+            noticeUntil = Time.time + NoticeSeconds;
+        }
 
         private void OnGUI()
         {
@@ -686,6 +747,15 @@ namespace RuleGhost.Anomalies
                 normal = { textColor = new Color(1f, 1f, 1f, 0.85f) }
             };
             GUI.Label(new Rect(16, 12, 400, 32), BuildRoundLabel(CurrentProfile), roundLabelStyle);
+
+            float remaining = noticeUntil - Time.time;
+            if (!string.IsNullOrEmpty(noticeText) && remaining > 0f)
+            {
+                noticeStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 24, alignment = TextAnchor.MiddleCenter };
+                float alpha = Mathf.Clamp01(remaining / NoticeFadeSeconds) * 0.9f;
+                noticeStyle.normal.textColor = new Color(1f, 1f, 1f, alpha);
+                GUI.Label(new Rect(0, Screen.height * 0.78f, Screen.width, 40), noticeText, noticeStyle);
+            }
         }
 
 #if UNITY_EDITOR

@@ -24,8 +24,11 @@ namespace RuleGhost.Debugging
         private readonly List<Renderer> tintedRenderers = new();
         private readonly Dictionary<Transform, Quaternion> rotationOverrides = new();
 
+        // Editor-only, like DeathSequenceTestKeys: in a build the number keys would tint/label
+        // paintings and even physically flip one (FlippedPainting's mirror target) mid-game.
         private void Update()
         {
+#if UNITY_EDITOR
             var keyboard = Keyboard.current;
             if (keyboard == null)
             {
@@ -38,6 +41,7 @@ namespace RuleGhost.Debugging
             if (keyboard.digit4Key.wasPressedThisFrame) Roll(3);
             if (keyboard.digit5Key.wasPressedThisFrame) Roll(4);
             if (keyboard.digit6Key.wasPressedThisFrame) Roll(5);
+#endif
         }
 
         private void Roll(int profileIndex)

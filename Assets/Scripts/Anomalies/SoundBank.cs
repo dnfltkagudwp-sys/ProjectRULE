@@ -34,6 +34,8 @@ namespace RuleGhost.Anomalies
         [SerializeField] private AudioClip inspectionDoorOpen;
         [Tooltip("점검문 닫힘(플레이어가 닫을 때). 0.4~1초.")]
         [SerializeField] private AudioClip inspectionDoorClose;
+        [Tooltip("출입문 점검이 인정될 때(잠겼는지 손잡이를 덜컹 당겨보는 소리). 출입문 위치에서 3D로 재생. 0.3~0.8초. 노크 라운드에서는 노크가 멎은 뒤 확인할 때만.")]
+        [SerializeField] private AudioClip entranceDoorCheck;
 
         [Header("규칙서")]
         [Tooltip("규칙서를 집을 때. 0.3~0.8초, 종이 스치는 소리.")]
@@ -94,6 +96,7 @@ namespace RuleGhost.Anomalies
         public AudioClip GuardDoorClose => guardDoorClose;
         public AudioClip InspectionDoorOpen => inspectionDoorOpen;
         public AudioClip InspectionDoorClose => inspectionDoorClose;
+        public AudioClip EntranceDoorCheck => entranceDoorCheck;
         public AudioClip RulebookPickup => rulebookPickup;
         public AudioClip RulebookOpen => rulebookOpen;
         public AudioClip RulebookClose => rulebookClose;
