@@ -77,7 +77,10 @@ namespace RuleGhost.EditorTools
                 forbidden: new[] { new ActionRequirement(TargetPlaceholder.AnyPainting, ActionTag.MakeEyeContact) },
                 wallOptions: new[] { PaintingWall.North },
                 ruleText: "3. 초상화가 눈을 뜨고 있다면 눈을 마주치지 않는다. 기울어져 있다면 눈을 마주치지 않은 상태에서 바로잡는다.",
-                ruleNumber: 3);
+                ruleNumber: 3,
+                // AM1-only in a 7-entry AM1 pool -- weighted up so it still shows ~once per full run
+                // like the rest (simulated 2026-10-02: weight 1 gave 0.51, weight 4 gives ~0.95).
+                selectionWeight: 4f);
 
             var personInLandscape = CreateAnomaly("PersonInLandscape", "사람이 나타난 풍경화",
                 slots: new[] { TimeSlot.AM1 }, terminal: false, mirror: false, paintingTarget: true,
@@ -93,7 +96,10 @@ namespace RuleGhost.EditorTools
                 },
                 wallOptions: new[] { PaintingWall.West },
                 ruleText: "4. 풍경화에 사람이 보인다면 즉시 등을 돌리고 잠시 기다린다.",
-                ruleNumber: 4);
+                ruleNumber: 4,
+                // Same reason as the portrait, one higher since its Deny with SoundFromExhibit also
+                // costs it some compound pairs (weight 1 gave 0.38, weight 5 gives ~0.95).
+                selectionWeight: 5f);
 
             var flippedPainting = CreateAnomaly("FlippedPainting", "뒤집힌 그림",
                 slots: new[] { TimeSlot.AM1, TimeSlot.AM5 }, terminal: false, mirror: true, paintingTarget: false,
@@ -103,8 +109,10 @@ namespace RuleGhost.EditorTools
                           "처음 발견한 그림에는 손대지 않는다.",
                 ruleNumber: 6);
 
+            // Only the knock stays AM5-only (2026-10-02); humidity, flipped, both inspection-door
+            // states and the exhibit voice can show up on an AM1 round as well.
             var highHumidity = CreateAnomaly("HighHumidity", "습도 70% 이상",
-                slots: new[] { TimeSlot.AM5 }, terminal: false, mirror: false, paintingTarget: false,
+                slots: new[] { TimeSlot.AM1, TimeSlot.AM5 }, terminal: false, mirror: false, paintingTarget: false,
                 required: System.Array.Empty<ActionRequirement>(),
                 forbidden: new[] { new ActionRequirement(TargetRef.Simple(TargetKind.Thermometer), ActionTag.AdjustThermostat) },
                 ruleText: "5. 로비의 적정 습도는 45~55%다. 정상 범위를 벗어났다면 온습도계를 조작해 맞추되, " +
@@ -112,21 +120,21 @@ namespace RuleGhost.EditorTools
                 ruleNumber: 5);
 
             var doorAjar = CreateAnomaly("InspectionDoorAjar", "점검문 반개방",
-                slots: new[] { TimeSlot.AM5 }, terminal: false, mirror: false, paintingTarget: false,
+                slots: new[] { TimeSlot.AM1, TimeSlot.AM5 }, terminal: false, mirror: false, paintingTarget: false,
                 required: new[] { new ActionRequirement(TargetRef.Simple(TargetKind.InspectionDoor), ActionTag.CloseInspectionDoorFully) },
                 forbidden: System.Array.Empty<ActionRequirement>(),
                 ruleText: "7. 점검문이 반쯤 열려 있다면 완전히 닫는다. 활짝 열려 있다면 가까이 가지 말고 즉시 경비실로 복귀한다.",
                 ruleNumber: 7);
 
             var doorWideOpen = CreateAnomaly("InspectionDoorWideOpen", "점검문 완전개방",
-                slots: new[] { TimeSlot.AM5 }, terminal: true, mirror: false, paintingTarget: false,
+                slots: new[] { TimeSlot.AM1, TimeSlot.AM5 }, terminal: true, mirror: false, paintingTarget: false,
                 required: new[] { new ActionRequirement(TargetRef.Simple(TargetKind.WholePatrol), ActionTag.ReturnToGuardRoom) },
                 forbidden: new[] { new ActionRequirement(TargetRef.Simple(TargetKind.WholePatrol), ActionTag.ContinuePatrol) },
                 ruleText: "7. 점검문이 반쯤 열려 있다면 완전히 닫는다. 활짝 열려 있다면 가까이 가지 말고 즉시 경비실로 복귀한다.",
                 ruleNumber: 7);
 
             var soundFromExhibit = CreateAnomaly("SoundFromExhibit", "전시물에서 발생하는 소리",
-                slots: new[] { TimeSlot.AM5 }, terminal: false, mirror: false, paintingTarget: true,
+                slots: new[] { TimeSlot.AM1, TimeSlot.AM5 }, terminal: false, mirror: false, paintingTarget: true,
                 required: new[] { new ActionRequirement(TargetPlaceholder.AnyPainting, ActionTag.FaceExhibit) },
                 forbidden: new[] { new ActionRequirement(TargetPlaceholder.AnyPainting, ActionTag.ShowBackToExhibit) },
                 ruleText: "8. 특정 전시물에서 목소리가 들린다면 순찰이 끝날 때까지 그 전시물에 등을 보이지 않는다.",
@@ -150,6 +158,13 @@ namespace RuleGhost.EditorTools
                 },
                 new CombinationRule
                 {
+                    AnomalyA = personInLandscape, AnomalyB = soundFromExhibit, State = CombinationState.Deny,
+                    Note = "풍경화는 등을 돌려야 하고(120°+ 2초), 목소리 전시물에는 등을 보이면 안 된다(90°+ 2초). " +
+                           "목소리가 같은 서쪽 벽의 다른 그림에 걸리면 풍경화에서 등을 돌리는 순간 목소리 쪽에도 등을 보이게 되어 " +
+                           "동시에 만족할 수 없다. 새벽 1시에 목소리가 추가되면서 처음 같이 뽑힐 수 있게 된 조합."
+                },
+                new CombinationRule
+                {
                     AnomalyA = eyesOpenPortrait, AnomalyB = soundFromExhibit, State = CombinationState.Allow,
                     Note = "설계 문서 7번 예시: 같은 그림에 걸려도 정면 유지 + 눈맞춤 회피가 동시에 가능해 검토 완료. " +
                            "기본값과 동일하지만 검토 기록용으로 명시적으로 남김."
@@ -157,7 +172,8 @@ namespace RuleGhost.EditorTools
             });
             ruleSet = SaveAsset(ruleSet, "CombinationRuleSet");
 
-            var am1Pool = new List<AnomalyDefinition> { eyesOpenPortrait, personInLandscape, flippedPainting };
+            var am1Pool = new List<AnomalyDefinition>
+                { eyesOpenPortrait, personInLandscape, flippedPainting, highHumidity, doorAjar, doorWideOpen, soundFromExhibit };
             var am5Pool = new List<AnomalyDefinition> { highHumidity, flippedPainting, doorAjar, doorWideOpen, soundFromExhibit, knockOnDoor };
 
             CreateProfile(1, TimeSlot.AM1, dutyAm1, new List<AnomalyDefinition>(), DifficultyRule.None);
@@ -182,11 +198,11 @@ namespace RuleGhost.EditorTools
 
         private static AnomalyDefinition CreateAnomaly(string id, string displayName, TimeSlot[] slots, bool terminal,
             bool mirror, bool paintingTarget, ActionRequirement[] required, ActionRequirement[] forbidden,
-            PaintingWall[] wallOptions = null, string ruleText = "", int ruleNumber = 0)
+            PaintingWall[] wallOptions = null, string ruleText = "", int ruleNumber = 0, float selectionWeight = 1f)
         {
             var anomaly = ScriptableObject.CreateInstance<AnomalyDefinition>();
             anomaly.EditorInitialize(id, displayName, slots, terminal, mirror, paintingTarget, required, forbidden,
-                wallOptions, ruleText, ruleNumber);
+                wallOptions, ruleText, ruleNumber, selectionWeight);
             return SaveAsset(anomaly, "Anomaly_" + id);
         }
 

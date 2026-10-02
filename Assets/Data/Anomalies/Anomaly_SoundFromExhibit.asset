@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: RuleGhost.Anomalies::RuleGhost.Anomalies.AnomalyDefinition
   id: SoundFromExhibit
   displayName: "\uC804\uC2DC\uBB3C\uC5D0\uC11C \uBC1C\uC0DD\uD558\uB294 \uC18C\uB9AC"
-  allowedSlots: 01000000i
+  allowedSlots: 0000000001000000i
   isTerminal: 0
   usesMirrorPairing: 0
   needsPaintingTarget: 1

@@ -25,8 +25,13 @@ namespace RuleGhost.Anomalies
         // original 1-9 order. InspectionDoorAjar/InspectionDoorWideOpen share number 7 (one rule,
         // two anomaly states).
         [SerializeField] private int ruleNumber;
+        // How likely PatrolGenerator is to try this one first, relative to the rest of the pool
+        // (1 = even odds). Lets the AM1-only anomalies (portrait, landscape) hold their share
+        // after the AM1 pool grew from 3 to 7.
+        [SerializeField, Min(0.01f)] private float selectionWeight = 1f;
 
         public string Id => id;
+        public float SelectionWeight => selectionWeight;
         public string DisplayName => displayName;
         public string RuleText => ruleText;
         public int RuleNumber => ruleNumber;
@@ -47,7 +52,8 @@ namespace RuleGhost.Anomalies
         public void EditorInitialize(string newId, string newDisplayName, IEnumerable<TimeSlot> slots,
             bool terminal, bool mirrorPairing, bool paintingTarget,
             IEnumerable<ActionRequirement> required, IEnumerable<ActionRequirement> forbidden,
-            IEnumerable<PaintingWall> wallOptions = null, string newRuleText = "", int newRuleNumber = 0)
+            IEnumerable<PaintingWall> wallOptions = null, string newRuleText = "", int newRuleNumber = 0,
+            float newSelectionWeight = 1f)
         {
             id = newId;
             displayName = newDisplayName;
@@ -60,6 +66,7 @@ namespace RuleGhost.Anomalies
             paintingWallOptions = wallOptions != null ? new List<PaintingWall>(wallOptions) : new List<PaintingWall>();
             ruleText = newRuleText;
             ruleNumber = newRuleNumber;
+            selectionWeight = newSelectionWeight;
         }
 #endif
     }

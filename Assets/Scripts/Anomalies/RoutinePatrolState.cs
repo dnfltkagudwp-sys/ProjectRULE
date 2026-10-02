@@ -24,6 +24,10 @@ namespace RuleGhost.Anomalies
         // guarantees one so the player is shown the rule in practice at least once.
         public const float TiltChance = 0.5f;
         public const int TutorialPatrolIndex = 1;
+        // Rule 3's second half ("기울어져 있다면 눈을 마주치지 않은 상태에서 바로잡는다") only ever
+        // comes up if the tilt lands on the open-eyed portrait itself -- left to the plain roll
+        // that was 50% x 1/9, so on an EyesOpenPortrait round the tilt picks that portrait first.
+        public const float EyesOpenPortraitTiltChance = 0.5f;
 
         public const int NormalHumidityMin = 45;
         public const int NormalHumidityMax = 55;
@@ -66,8 +70,13 @@ namespace RuleGhost.Anomalies
         {
             if (profile.Slot == TimeSlot.AM1)
             {
+                var openEyedPortrait = FindOpenEyedPortrait(anomalies);
                 bool tiltThisRound = profile.PatrolIndex == TutorialPatrolIndex || rng.NextDouble() < TiltChance;
-                if (tiltThisRound)
+                if (openEyedPortrait.HasValue && rng.NextDouble() < EyesOpenPortraitTiltChance)
+                {
+                    ApplyTilt(openEyedPortrait.Value, rng, bindings);
+                }
+                else if (tiltThisRound)
                 {
                     var wall = AllWalls[rng.Next(AllWalls.Length)];
                     int index = rng.Next(1, 4);
@@ -94,6 +103,32 @@ namespace RuleGhost.Anomalies
                 int value = rng.Next(RoutineHumidityMin, RoutineHumidityMax + 1);
                 ShowHumidity(bindings, value, needsAdjustment: true);
             }
+        }
+
+        // EyesOpenPortrait's own painting -- the target of its MakeEyeContact forbidden action.
+        private static TargetRef? FindOpenEyedPortrait(IReadOnlyList<ResolvedAnomaly> anomalies)
+        {
+            if (anomalies == null)
+            {
+                return null;
+            }
+
+            foreach (var a in anomalies)
+            {
+                if (a.Id != "EyesOpenPortrait")
+                {
+                    continue;
+                }
+
+                foreach (var forbid in a.ForbiddenActions)
+                {
+                    if (forbid.Action == ActionTag.MakeEyeContact)
+                    {
+                        return forbid.Target;
+                    }
+                }
+            }
+            return null;
         }
 
         private void ApplyTilt(TargetRef target, Random rng, PatrolSceneBindings bindings)

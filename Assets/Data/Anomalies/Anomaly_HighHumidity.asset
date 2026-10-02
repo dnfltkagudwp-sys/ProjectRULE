@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: RuleGhost.Anomalies::RuleGhost.Anomalies.AnomalyDefinition
   id: HighHumidity
   displayName: "\uC2B5\uB3C4 70% \uC774\uC0C1"
-  allowedSlots: 01000000i
+  allowedSlots: 0000000001000000i
   isTerminal: 0
   usesMirrorPairing: 0
   needsPaintingTarget: 0

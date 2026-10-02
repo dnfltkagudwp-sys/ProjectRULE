@@ -93,15 +93,17 @@ namespace RuleGhost.Anomalies
             }
         }
 
+        // Weighted shuffle (Efraimidis-Spirakis): each entry draws an exponential key scaled by its
+        // SelectionWeight and the pool is tried in key order, so a weight-3 anomaly is 3x as likely
+        // as a weight-1 one to come before it. With every weight at 1 this is a plain uniform
+        // shuffle. The first-fit loops above are unchanged -- weights only change who gets tried first.
         private static List<AnomalyDefinition> ShuffledPool(PatrolProfile profile, Random rng)
         {
-            var pool = new List<AnomalyDefinition>(profile.AnomalyPool);
-            for (int i = pool.Count - 1; i > 0; i--)
-            {
-                int j = rng.Next(i + 1);
-                (pool[i], pool[j]) = (pool[j], pool[i]);
-            }
-            return pool;
+            return profile.AnomalyPool
+                .Select(def => (def, key: -Math.Log(1.0 - rng.NextDouble()) / Math.Max(def.SelectionWeight, 0.01f)))
+                .OrderBy(entry => entry.key)
+                .Select(entry => entry.def)
+                .ToList();
         }
     }
 }

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: RuleGhost.Anomalies::RuleGhost.Anomalies.AnomalyDefinition
   id: InspectionDoorWideOpen
   displayName: "\uC810\uAC80\uBB38 \uC644\uC804\uAC1C\uBC29"
-  allowedSlots: 01000000i
+  allowedSlots: 0000000001000000i
   isTerminal: 1
   usesMirrorPairing: 0
   needsPaintingTarget: 0
