@@ -85,18 +85,6 @@ namespace RuleGhost.Anomalies
         // next round with nothing to close it. Same static-hook pattern as the two above.
         public static Action ResetGuardRoomDoor;
 
-        // Captured at the end of the previous round for the minimal result overlay in OnGUI --
-        // deliberately not CurrentProfile/LastResult alone, since StartPatrolAt overwrites
-        // CurrentProfile with the *next* round before this frame ever renders.
-        private PatrolProfile lastCompletedProfile;
-        private string lastResultSummary;
-
-        // Set the instant a forbidden action is caught live (this round only), so OnGUI can show
-        // the failure immediately instead of waiting for the player to walk back to the guard
-        // room -- TryCompletePatrol/Evaluate() still make the actual pass/fail call when that
-        // happens, this is purely the early notice.
-        private bool roundFailed;
-        private string activeNotice;
         private readonly HashSet<string> notifiedViolations = new();
         // Same idea as notifiedViolations, for the "required action just satisfied" side (e.g.
         // PersonInLandscape's texture revert) -- see HandleAnomalyRequiredSatisfied.
@@ -241,8 +229,6 @@ namespace RuleGhost.Anomalies
             CurrentProgress = new PatrolProgress();
             LastResult = null;
             CurrentState = State.PatrolActive;
-            roundFailed = false;
-            activeNotice = null;
             notifiedViolations.Clear();
             notifiedSatisfactions.Clear();
             terminalAbortState.ResetForRound();
@@ -565,8 +551,6 @@ namespace RuleGhost.Anomalies
             }
 
             deathSequenceRunning = true;
-            roundFailed = true;
-            activeNotice = $"규칙 위반: {deathId}";
             CurrentState = State.DeathSequence;
             SetPlayerControlsEnabled?.Invoke(false);
             Debug.Log($"[PatrolRuntimeController] Patrol {CurrentProfile.PatrolIndex} -- death sequence triggered ({deathId}).");
@@ -641,16 +625,6 @@ namespace RuleGhost.Anomalies
         {
             CurrentState = State.Result;
             LastResult = result;
-            activeNotice = null;
-
-            // Stashed for OnGUI's result overlay -- CurrentProfile itself gets overwritten by
-            // StartPatrolAt below before this frame ever renders.
-            lastCompletedProfile = CurrentProfile;
-            lastResultSummary = LastResult.Success
-                ? "PASS"
-                : $"FAIL (missing:{LastResult.MissingTargets.Count} entranceLast:{!LastResult.EntranceNotLast} " +
-                  $"forbidden:{LastResult.ForbiddenAnomalyActions.Count} obs:{LastResult.MissingObservations.Count} " +
-                  $"recheck:{LastResult.MissingRechecks.Count} routine:{LastResult.MissingRoutineTasks.Count})";
 
             if (LastResult.Success)
             {
@@ -694,31 +668,24 @@ namespace RuleGhost.Anomalies
             }
         }
 
-        // Placeholder-grade result feedback for testing only -- deliberately just corner labels,
-        // no Canvas/animation/sound; the real pass/fail presentation is a separate, later task.
-        // activeNotice covers the CURRENT round (an immediate-fail notice, or "go finish the
-        // checklist"); the box below it shows the most recently COMPLETED round and persists into
-        // the next one (which starts right away once the player does return -- see FinishPatrol).
+        // Just the current day and time in the corner while a patrol is running -- the old
+        // pass/fail and rule-violation debug boxes are gone (results are still logged by
+        // FinishPatrol/TriggerDeath). Hidden during the intro and death sequences, which own the screen.
+        private GUIStyle roundLabelStyle;
+
         private void OnGUI()
         {
-            int y = 10;
-            if (!string.IsNullOrEmpty(activeNotice))
+            if (CurrentState != State.PatrolActive || CurrentProfile == null)
             {
-                // Wide + word-wrapped -- the incomplete-checklist notice can list several missing
-                // targets by name, which a fixed 380x30 box would just clip.
-                var style = new GUIStyle(GUI.skin.box) { wordWrap = true, alignment = TextAnchor.UpperLeft };
-                float height = style.CalcHeight(new GUIContent(activeNotice), 600) + 10;
-                GUI.color = roundFailed ? Color.red : Color.yellow;
-                GUI.Box(new Rect(10, y, 600, height), activeNotice, style);
-                GUI.color = Color.white;
-                y += (int)height + 4;
+                return;
             }
 
-            if (lastCompletedProfile != null)
+            roundLabelStyle ??= new GUIStyle(GUI.skin.label)
             {
-                GUI.Box(new Rect(10, y, 380, 30),
-                    $"Patrol {lastCompletedProfile.PatrolIndex} ({lastCompletedProfile.Slot}): {lastResultSummary}");
-            }
+                fontSize = 22,
+                normal = { textColor = new Color(1f, 1f, 1f, 0.85f) }
+            };
+            GUI.Label(new Rect(16, 12, 400, 32), BuildRoundLabel(CurrentProfile), roundLabelStyle);
         }
 
 #if UNITY_EDITOR

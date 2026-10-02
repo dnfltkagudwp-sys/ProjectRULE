@@ -34,19 +34,16 @@ namespace RuleGhost.EditorTools
             // thermometer stays a plain E-key check. ReturnToGuardRoom/GuardRoomReturn is the
             // round's own closing action (tautologically satisfied by the time Evaluate runs at
             // all -- see PatrolEvaluator) kept in the data so the checklist reads complete.
+            // The 9 per-painting ObservePainting checks were dropped (2026-10-02): a 0.3s glance
+            // gave the player no way to tell whether a painting had counted, and missing one was a
+            // death at the guard room. The anomalies themselves (tilt, flip, landscape...) are what
+            // send the player around the paintings now.
             var am1Required = new List<ActionRequirement>
             {
                 new ActionRequirement(TargetRef.Simple(TargetKind.Thermometer), ActionTag.InspectThermometer),
                 new ActionRequirement(TargetRef.Simple(TargetKind.InspectionDoor), ActionTag.InspectInspectionDoor),
                 new ActionRequirement(TargetRef.Simple(TargetKind.GuardRoomReturn), ActionTag.ReturnToGuardRoom),
             };
-            foreach (var wall in new[] { PaintingWall.North, PaintingWall.West, PaintingWall.East })
-            {
-                for (int i = 1; i <= 3; i++)
-                {
-                    am1Required.Add(new ActionRequirement(TargetRef.Painting(wall, i), ActionTag.ObservePainting));
-                }
-            }
 
             var dutyAm1 = CreateDuty("Duty_AM1", TimeSlot.AM1,
                 required: am1Required.ToArray(),
