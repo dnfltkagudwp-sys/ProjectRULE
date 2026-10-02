@@ -5877,11 +5877,11 @@ MonoBehaviour:
   soundShakeMagnitude: 0.1
   soundFadeOut: 0.08
   soundBlackHold: 0.9
-  humidityGlitchDuration: 0.55
+  humidityGlitchDuration: 1
   humidityFadeOut: 0.08
   humidityBlackHold: 0.9
   doorTiltDegrees: 28
-  doorTiltDuration: 1.8
+  doorTiltDuration: 1.2
   doorFadeStartDelay: 1
   doorFadeOut: 0.6
   doorBlackHold: 0.9

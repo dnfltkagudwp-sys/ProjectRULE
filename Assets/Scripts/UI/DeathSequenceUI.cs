@@ -64,7 +64,7 @@ namespace RuleGhost.UI
         [Tooltip("How far the view rolls off level, in degrees.")]
         [SerializeField] private float doorTiltDegrees = 28f;
         [Tooltip("Seconds the roll takes to reach that angle.")]
-        [SerializeField] private float doorTiltDuration = 1.8f;
+        [SerializeField] private float doorTiltDuration = 1.2f;
         [Tooltip("Seconds of tilting before the fade starts -- keep shorter than the roll so it's cut off mid-tilt.")]
         [SerializeField] private float doorFadeStartDelay = 1f;
         [SerializeField] private float doorFadeOut = 0.6f;
