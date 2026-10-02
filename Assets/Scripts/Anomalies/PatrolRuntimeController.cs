@@ -134,7 +134,7 @@ namespace RuleGhost.Anomalies
         {
             if (CurrentState != State.PatrolActive)
             {
-                knockState.StopAudio();
+                knockState.StopCue();
                 return;
             }
 

@@ -41,7 +41,7 @@ namespace RuleGhost.EditorTools
             var titleGroup = new GameObject("TitleGroup", typeof(RectTransform), typeof(CanvasGroup));
             titleGroup.transform.SetParent(canvasGO.transform, false);
             Stretch(titleGroup.GetComponent<RectTransform>());
-            var title = CreateText(titleGroup.transform, "Title", font, 120, TextAnchor.MiddleCenter, "규칙 괴담");
+            var title = CreateText(titleGroup.transform, "Title", font, 120, TextAnchor.MiddleCenter, "야간순찰");
             title.color = new Color(0.9f, 0.9f, 0.92f);
             var titleRect = title.rectTransform;
             titleRect.anchorMin = new Vector2(0f, 0.5f);

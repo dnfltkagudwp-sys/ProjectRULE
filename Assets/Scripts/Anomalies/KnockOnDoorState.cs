@@ -15,9 +15,14 @@ namespace RuleGhost.Anomalies
     //     (KeepDistanceAndWait), and PatrolEvaluator fails the round at the guard room without it.
     //
     // "물러나서" isn't measured: leaving the door alone until the knocking stops is what counts.
+    //
+    // The knock also lights a flickering red light at the door for exactly as long as it runs --
+    // the same non-audio cue SoundFromExhibit uses -- so a player who can't hear it still sees
+    // both that something is at the door and the moment it stops.
     public class KnockOnDoorState
     {
         public const float KnockStartDistance = 4f;
+        public const float KnockLightHeight = 1.5f;
         // Only used when no clip is assigned, so the rule still has a knocking window to test.
         private const float FallbackKnockSeconds = 5f;
 
@@ -26,6 +31,7 @@ namespace RuleGhost.Anomalies
 
         private GameObject knockObject;
         private AudioSource knockSource;
+        private GameObject knockLightObject;
         private float knockRemaining;
 
         public Phase Current { get; private set; }
@@ -34,16 +40,20 @@ namespace RuleGhost.Anomalies
         {
             Current = Phase.Waiting;
             knockRemaining = 0f;
-            StopAudio();
+            StopCue();
         }
 
         // Also called every frame the patrol isn't active (death sequence, result screen) so a
         // knock still running when the round ends doesn't keep looping over whatever comes next.
-        public void StopAudio()
+        public void StopCue()
         {
             if (knockSource != null && knockSource.isPlaying)
             {
                 knockSource.Stop();
+            }
+            if (knockLightObject != null && knockLightObject.activeSelf)
+            {
+                knockLightObject.SetActive(false);
             }
         }
 
@@ -64,7 +74,7 @@ namespace RuleGhost.Anomalies
                 knockRemaining -= deltaTime;
                 if (knockRemaining <= 0f)
                 {
-                    StopAudio();
+                    StopCue();
                     Current = Phase.Stopped;
                 }
             }
@@ -77,7 +87,7 @@ namespace RuleGhost.Anomalies
             {
                 case Phase.Knocking:
                     // Cut dead the instant the door is touched.
-                    StopAudio();
+                    StopCue();
                     return VisitOutcome.Violated;
 
                 case Phase.Stopped:
@@ -121,6 +131,20 @@ namespace RuleGhost.Anomalies
                 knockSource.volume = bank.SfxVolume;
                 knockSource.Play();
             }
+
+            if (knockLightObject == null)
+            {
+                knockLightObject = new GameObject("AnomalyKnockCueLight");
+                var light = knockLightObject.AddComponent<Light>();
+                light.type = LightType.Point;
+                light.color = AnomalyRuntimeApplier.SoundCueLightColor;
+                light.range = 3f;
+                knockLightObject.AddComponent<FlickerLight>();
+            }
+            // The entrance target is the floor mark (y = 0); lift the light to door height so it
+            // reads as coming from the door rather than a glow on the floor.
+            knockLightObject.transform.position = entrance.position + Vector3.up * KnockLightHeight;
+            knockLightObject.SetActive(true);
 
             Current = Phase.Knocking;
         }

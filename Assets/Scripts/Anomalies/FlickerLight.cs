@@ -3,9 +3,9 @@ using UnityEngine;
 namespace RuleGhost.Anomalies
 {
     // Continuous horror-style flicker for a Light's intensity, driven by Perlin noise so it reads
-    // as an unstable flicker rather than a mechanical pulse. Used as SoundFromExhibit's non-audio
-    // cue -- see AnomalyRuntimeApplier.PlaySoundCue -- so the anomaly is still noticeable to a
-    // player who can't hear (or has muted) the placeholder audio cue.
+    // as an unstable flicker rather than a mechanical pulse. Used as the non-audio cue for both
+    // sound-based anomalies -- SoundFromExhibit (AnomalyRuntimeApplier.PlaySoundCue) and KnockOnDoor
+    // (KnockOnDoorState) -- so they're still noticeable to a player who can't hear (or has muted) them.
     public class FlickerLight : MonoBehaviour
     {
         public float baseIntensity = 2.5f;

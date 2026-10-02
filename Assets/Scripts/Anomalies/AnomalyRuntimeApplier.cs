@@ -35,7 +35,8 @@ namespace RuleGhost.Anomalies
         // Non-audio counterpart to soundCueObject -- a flickering red point light so the anomaly
         // still reads to a player who can't hear (or has muted) the placeholder audio cue.
         private GameObject soundCueLightObject;
-        private static readonly Color SoundCueLightColor = new(1f, 0.15f, 0.1f);
+        // Internal so KnockOnDoorState's own non-audio cue uses the same red.
+        internal static readonly Color SoundCueLightColor = new(1f, 0.15f, 0.1f);
 
         public void ResetAll(PatrolSceneBindings bindings)
         {
