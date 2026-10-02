@@ -408,6 +408,8 @@ namespace RuleGhost.Anomalies
                 routineState.TiltedPainting.Value.Equals(target))
             {
                 routineState.Straighten(sceneBindings);
+                // Same squeak as the player's own flip -- both are a hand turning a frame.
+                anomalyApplier.PlayPaintingFlipSound(sceneBindings, target);
                 CurrentProgress.RecordAction(target, ActionTag.StraightenPainting);
             }
             else if (target.Kind == TargetKind.Thermometer && routineState.HumidityNeedsAdjustment)

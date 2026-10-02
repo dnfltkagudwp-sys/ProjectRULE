@@ -267,8 +267,9 @@ namespace RuleGhost.Anomalies
             PlayInspectionDoorSound(SoundBank.Instance?.InspectionDoorClose);
         }
 
-        // The squeak for the player's own flip only -- FlipPainting itself stays silent because it
-        // also runs at round start to set up FlippedPainting, where a sound would give it away.
+        // The squeak for the player's own hand on a frame (flipping FlippedPainting's mirror target,
+        // straightening a Routine tilt) -- FlipPainting itself stays silent because it also runs
+        // at round start to set up FlippedPainting, where a sound would give it away.
         public void PlayPaintingFlipSound(PatrolSceneBindings bindings, TargetRef target)
         {
             var t = bindings?.Resolve(target);
@@ -324,8 +325,18 @@ namespace RuleGhost.Anomalies
                 soundCueSource = soundCueObject.AddComponent<AudioSource>();
                 soundCueSource.playOnAwake = false;
                 soundCueSource.spatialBlend = 1f;
-                soundCueSource.maxDistance = 12f;
-                soundCueSource.rolloffMode = AudioRolloffMode.Linear;
+                // The rule hinges on telling WHICH painting is speaking, so distance has to read
+                // clearly: logarithmic falloff (loud up close, dropping fast over the first few
+                // metres) instead of the old flat linear ramp, plus a distance low-pass so a far
+                // voice also sounds muffled, not just quieter.
+                soundCueSource.rolloffMode = AudioRolloffMode.Logarithmic;
+                soundCueSource.minDistance = 1f;
+                soundCueSource.maxDistance = 15f;
+                soundCueSource.dopplerLevel = 0f;
+                var lowPass = soundCueObject.AddComponent<AudioLowPassFilter>();
+                // x = distance / maxDistance, y = cutoff (1 = no filtering).
+                lowPass.customCutoffCurve = new AnimationCurve(
+                    new Keyframe(0f, 1f), new Keyframe(0.3f, 0.35f), new Keyframe(1f, 0.08f));
             }
 
             // A real clip from the SoundBank if one is assigned, otherwise the generated placeholder.

@@ -148,31 +148,36 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 695f68108863e8b46bb6a35bd4ccefe0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: RuleGhost.Anomalies::RuleGhost.Anomalies.SoundBank
-  lobbyAmbience: {fileID: 0}
+  lobbyAmbience: {fileID: 8300000, guid: a203c93189784cc4afbc168aff1c9dd4, type: 3}
   lobbyAmbienceVolume: 0.4
   titleMusic: {fileID: 0}
   titleMusicVolume: 0.5
-  footsteps: []
+  footsteps:
+  - {fileID: 8300000, guid: 84dd7ff5cd8e493597f0a916c3d5e882, type: 3}
+  - {fileID: 8300000, guid: 473cb817a2ea4290ac62d469fc638e48, type: 3}
   footstepVolume: 0.5
-  guardDoorOpen: {fileID: 0}
-  guardDoorClose: {fileID: 0}
+  guardDoorOpen: {fileID: 8300000, guid: 174720e554da4c50b6ac9462178c6efb, type: 3}
+  guardDoorClose: {fileID: 8300000, guid: 174720e554da4c50b6ac9462178c6efb, type: 3}
   inspectionDoorOpen: {fileID: 0}
-  inspectionDoorClose: {fileID: 0}
-  rulebookPickup: {fileID: 0}
-  rulebookOpen: {fileID: 0}
-  rulebookClose: {fileID: 0}
-  rulebookPageTurn: {fileID: 0}
+  inspectionDoorClose: {fileID: 8300000, guid: 60ac9303dc8948849510e878f9514f54, type: 3}
+  rulebookPickup: {fileID: 8300000, guid: f466f1aedd954f95999b53c38631dc2c, type: 3}
+  rulebookOpen: {fileID: 8300000, guid: f466f1aedd954f95999b53c38631dc2c, type: 3}
+  rulebookClose: {fileID: 8300000, guid: f466f1aedd954f95999b53c38631dc2c, type: 3}
+  rulebookPageTurn: {fileID: 8300000, guid: f466f1aedd954f95999b53c38631dc2c, type: 3}
+  paintingFlip: {fileID: 8300000, guid: 27a8a08633384fd2ae59700e9ade8533, type: 3}
+  humidityButton: {fileID: 8300000, guid: 0e70fe58b0f64a2c823faee25d9c3e7e, type: 3}
   roundIntro: {fileID: 0}
   titleStart: {fileID: 0}
-  soundFromExhibitCue: {fileID: 0}
-  soundFromExhibitCueLoop: 0
-  knockOnDoorCue: {fileID: 0}
-  deathEyesOpenPortrait: {fileID: 0}
-  deathPersonInLandscape: {fileID: 0}
+  soundFromExhibitCue: {fileID: 8300000, guid: 03b68d3a895748e6b225bc376f1697f1, type: 3}
+  soundFromExhibitCueLoop: 1
+  knockOnDoorCue: {fileID: 8300000, guid: ddc486bf495c45e3a3081663777aaef0, type: 3}
+  knockOnDoorCueRepeat: 2
+  deathEyesOpenPortrait: {fileID: 8300000, guid: 8c63c4f7363c4867987c6eac466e74f7, type: 3}
+  deathPersonInLandscape: {fileID: 8300000, guid: 3f03c0136b61445d8ee7b37bb0d6584b, type: 3}
   deathSoundFromExhibit: {fileID: 0}
-  deathHighHumidity: {fileID: 0}
-  deathInspectionDoorWideOpen: {fileID: 0}
-  deathPatrolFailed: {fileID: 0}
+  deathHighHumidity: {fileID: 8300000, guid: e1b55c0094dd44188bd7fad2838c3ace, type: 3}
+  deathInspectionDoorWideOpen: {fileID: 8300000, guid: b5522582e648421d96838d2d2de2e3a7, type: 3}
+  deathPatrolFailed: {fileID: 8300000, guid: bdfec80e0cb84e1eb325efaeec690747, type: 3}
   sfxVolume: 1
 --- !u!4 &7870
 Transform:
@@ -5885,9 +5890,9 @@ MonoBehaviour:
   doorFadeStartDelay: 1
   doorFadeOut: 0.6
   doorBlackHold: 0.9
-  failedBeforeKnock: 0.5
-  failedAfterKnock: 1.1
-  failedDarkBeforeFade: 0.7
+  failedBeforeKnock: 0.8
+  failedAfterKnock: 1.8
+  failedDarkBeforeFade: 2.4
   failedFadeOut: 0.5
   failedBlackHold: 0.9
 --- !u!114 &508329594

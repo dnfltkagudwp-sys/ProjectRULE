@@ -72,11 +72,11 @@ namespace RuleGhost.UI
 
         [Header("Patrol-failed death (seconds)")]
         [Tooltip("Quiet beat after stepping into the guard room, before the knock.")]
-        [SerializeField] private float failedBeforeKnock = 0.5f;
-        [Tooltip("Long enough for all three knocks to land.")]
-        [SerializeField] private float failedAfterKnock = 1.1f;
-        [Tooltip("Sitting in the unlit guard room before the fade.")]
-        [SerializeField] private float failedDarkBeforeFade = 0.7f;
+        [SerializeField] private float failedBeforeKnock = 0.8f;
+        [Tooltip("From the knock starting to the guard room lamp going out -- tuned to land in the knock clip's pause, so the second, louder round of knocking comes in the dark.")]
+        [SerializeField] private float failedAfterKnock = 1.8f;
+        [Tooltip("Sitting in the unlit guard room before the fade -- long enough for the second round of knocking to finish.")]
+        [SerializeField] private float failedDarkBeforeFade = 2.4f;
         [SerializeField] private float failedFadeOut = 0.5f;
         [SerializeField] private float failedBlackHold = 0.9f;
 

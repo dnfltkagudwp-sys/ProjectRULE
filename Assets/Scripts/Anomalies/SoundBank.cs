@@ -46,7 +46,7 @@ namespace RuleGhost.Anomalies
         [SerializeField] private AudioClip rulebookPageTurn;
 
         [Header("전시물")]
-        [Tooltip("플레이어가 뒤집힌 액자를 바로잡을 때 액자 위치에서 3D로 재생. 0.3~0.8초, 짧은 끼익. 라운드 시작 시 이상현상 배치로 뒤집힐 때는 재생 안 함.")]
+        [Tooltip("플레이어가 뒤집힌 액자를 바로잡거나 기울어진 그림을 바로 세울 때 액자 위치에서 3D로 재생. 0.3~0.8초, 짧은 끼익. 라운드 시작 시 이상현상 배치로 뒤집힐 때는 재생 안 함.")]
         [SerializeField] private AudioClip paintingFlip;
 
         [Header("습도계")]
