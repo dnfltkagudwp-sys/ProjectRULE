@@ -86,11 +86,11 @@ namespace RuleGhost.Anomalies
                     case "EyesOpenPortrait":
                         // Forbidden action's target is the resolved "any painting" placeholder --
                         // the one that must not be looked in the eye.
-                        SwapTexture(bindings, FirstTarget(anomaly.ForbiddenActions), PortraitVariantPath);
+                        SwapTexture(bindings, FirstTarget(anomaly.ForbiddenActions), PortraitVariant);
                         break;
 
                     case "PersonInLandscape":
-                        SwapTexture(bindings, FirstTarget(anomaly.RequiredActions), LandscapeVariantPath);
+                        SwapTexture(bindings, FirstTarget(anomaly.RequiredActions), LandscapeVariant);
                         break;
 
                     case "FlippedPainting":
@@ -156,7 +156,7 @@ namespace RuleGhost.Anomalies
             tintedRenderers.Remove(renderer);
         }
 
-        private void SwapTexture(PatrolSceneBindings bindings, TargetRef target, System.Func<TargetRef, (string path, Vector4 st)?> lookup)
+        private void SwapTexture(PatrolSceneBindings bindings, TargetRef target, System.Func<TargetRef, (Texture2D texture, Vector4 st)?> lookup)
         {
             var variant = lookup(target);
             if (variant == null)
@@ -173,10 +173,11 @@ namespace RuleGhost.Anomalies
                 return;
             }
 
-            var loaded = LoadTexture(variant.Value.path);
+            var loaded = variant.Value.texture;
             if (loaded == null)
             {
-                Debug.LogWarning($"[AnomalyRuntimeApplier] Texture not found at {variant.Value.path}.");
+                Debug.LogError($"[AnomalyRuntimeApplier] No anomaly texture assigned for {target} -- " +
+                               "is AnomalyVisualAssets in the scene and wired (RuleGhost/Anomalies/Wire Anomaly Visual Assets)?");
                 return;
             }
 
@@ -191,48 +192,33 @@ namespace RuleGhost.Anomalies
             tintedRenderers.Add(renderer);
         }
 
-        private static Texture2D LoadTexture(string assetPath)
-        {
-#if UNITY_EDITOR
-            return UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
-#else
-            return null;
-#endif
-        }
-
         // North wall Cubes need a V-flip, West wall Cubes use identity -- same convention as
         // ApplyPaintingBaseTextures.cs.
         private static readonly Vector4 NorthFlipST = new Vector4(1, -1, 0, 1);
         private static readonly Vector4 WestIdentityST = new Vector4(1, 1, 0, 0);
 
-        private static (string path, Vector4 st)? PortraitVariantPath(TargetRef target)
+        // Textures come from AnomalyVisualAssets (a scene reference), never a path -- see that
+        // class for why. A null texture is reported by SwapTexture rather than skipped silently.
+        private static (Texture2D texture, Vector4 st)? PortraitVariant(TargetRef target)
         {
-            if (target.Kind != TargetKind.SpecificPainting || target.Wall != PaintingWall.North)
+            if (target.Kind != TargetKind.SpecificPainting || target.Wall != PaintingWall.North ||
+                target.Index < 1 || target.Index > 3)
             {
                 return null;
             }
-            string folder = target.Index switch
-            {
-                1 => "Portrait",
-                2 => "Portrait2",
-                3 => "Portrait3",
-                _ => null
-            };
-            if (folder == null) return null;
-            return ($"Assets/Art/Paintings/{folder}/{folder}_eyesopen_v1.png", NorthFlipST);
+            return (AnomalyVisualAssets.Instance != null ? AnomalyVisualAssets.Instance.PortraitEyesOpen(target.Index) : null,
+                NorthFlipST);
         }
 
-        private static (string path, Vector4 st)? LandscapeVariantPath(TargetRef target)
+        private static (Texture2D texture, Vector4 st)? LandscapeVariant(TargetRef target)
         {
-            if (target.Kind != TargetKind.SpecificPainting || target.Wall != PaintingWall.West)
+            if (target.Kind != TargetKind.SpecificPainting || target.Wall != PaintingWall.West ||
+                target.Index < 1 || target.Index > 3)
             {
                 return null;
             }
-            // Landscape3's approved variant file is versioned _v1 (the others are _v2) -- just a
-            // naming quirk from how each was originally generated/approved, not a pattern to fix here.
-            string suffix = target.Index == 3 ? "v1" : "v2";
-            if (target.Index < 1 || target.Index > 3) return null;
-            return ($"Assets/Art/Paintings/Landscape{target.Index}/Landscape{target.Index}_person_{suffix}.png", WestIdentityST);
+            return (AnomalyVisualAssets.Instance != null ? AnomalyVisualAssets.Instance.LandscapePerson(target.Index) : null,
+                WestIdentityST);
         }
 
         // Public so PatrolRuntimeController can also call this for the player's OWN flip action

@@ -419,8 +419,8 @@ namespace RuleGhost.UI
             var texture = LoadDeathTexture(target.Value);
             if (texture == null)
             {
-                Debug.LogWarning($"[DeathSequenceUI] No death texture for {target.Value} -- " +
-                                 "run RuleGhost/Anomalies/Build Death Placeholder Textures.");
+                Debug.LogError($"[DeathSequenceUI] No death texture for {target.Value} -- " +
+                               "is AnomalyVisualAssets in the scene and wired (RuleGhost/Anomalies/Wire Anomaly Visual Assets)?");
                 return;
             }
 
@@ -447,28 +447,19 @@ namespace RuleGhost.UI
                 return null;
             }
 
-            string path = target.Wall switch
-            {
-                // Portrait/Portrait2/Portrait3 -- the first folder has no suffix, matching how
-                // AnomalyRuntimeApplier.PortraitVariantPath names them.
-                PaintingWall.North => target.Index == 1
-                    ? "Assets/Art/Paintings/Portrait/Portrait_death_v1.png"
-                    : $"Assets/Art/Paintings/Portrait{target.Index}/Portrait{target.Index}_death_v1.png",
-                PaintingWall.West => $"Assets/Art/Paintings/Landscape{target.Index}/Landscape{target.Index}_death_v1.png",
-                _ => null
-            };
-            if (path == null)
+            // From AnomalyVisualAssets (a scene reference) so the build includes them -- the old
+            // AssetDatabase path lookup only worked in the Editor.
+            var assets = AnomalyVisualAssets.Instance;
+            if (assets == null)
             {
                 return null;
             }
-
-#if UNITY_EDITOR
-            return UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>(path);
-#else
-            // Same editor-only limitation as AnomalyRuntimeApplier's own texture swaps -- moving
-            // these to Resources/Addressables is a project-wide change, not a per-sting one.
-            return null;
-#endif
+            return target.Wall switch
+            {
+                PaintingWall.North => assets.PortraitDeath(target.Index),
+                PaintingWall.West => assets.LandscapeDeath(target.Index),
+                _ => null
+            };
         }
 
         // Cuts the painting's own voice dead at the instant of death (it may be looping all round).

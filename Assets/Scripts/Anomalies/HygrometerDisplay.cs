@@ -11,10 +11,6 @@ namespace RuleGhost.Anomalies
     // glitch can cycle the same materials.
     public static class HygrometerDisplay
     {
-        private const string NormalMaterialPath = "Assets/Art/Checkpoints/Hygrometer/M_Hygrometer_Normal.mat";
-        private const string RoutineMaterialPath = "Assets/Art/Checkpoints/Hygrometer/M_Hygrometer_Routine.mat";
-        private const string AnomalyMaterialPath = "Assets/Art/Checkpoints/Hygrometer/M_Hygrometer_Anomaly.mat";
-
         public enum State
         {
             Normal,
@@ -44,22 +40,17 @@ namespace RuleGhost.Anomalies
             return new[] { LoadMaterial(State.Normal), LoadMaterial(State.Routine), LoadMaterial(State.Anomaly) };
         }
 
+        // From AnomalyVisualAssets (a scene reference) so the build includes them -- the old
+        // AssetDatabase path lookup only worked in the Editor.
         private static Material LoadMaterial(State state)
         {
-            string path = state switch
+            var assets = AnomalyVisualAssets.Instance;
+            var mat = assets != null ? assets.Hygrometer(state) : null;
+            if (mat == null)
             {
-                State.Routine => RoutineMaterialPath,
-                State.Anomaly => AnomalyMaterialPath,
-                _ => NormalMaterialPath
-            };
-
-#if UNITY_EDITOR
-            return UnityEditor.AssetDatabase.LoadAssetAtPath<Material>(path);
-#else
-            // Same editor-only limitation as AnomalyRuntimeApplier's painting texture swaps --
-            // moving these to Resources/Addressables is a project-wide change, not a per-prop one.
-            return null;
-#endif
+                Debug.LogError($"[HygrometerDisplay] No {state} material -- is AnomalyVisualAssets in the scene and wired?");
+            }
+            return mat;
         }
     }
 }
