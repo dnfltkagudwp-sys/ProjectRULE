@@ -135,7 +135,10 @@ namespace RuleGhost.EditorTools
                 required: new[] { new ActionRequirement(TargetPlaceholder.AnyPainting, ActionTag.FaceExhibit) },
                 forbidden: new[] { new ActionRequirement(TargetPlaceholder.AnyPainting, ActionTag.ShowBackToExhibit) },
                 ruleText: "8. 특정 전시물에서 목소리가 들린다면 순찰이 끝날 때까지 그 전시물에 등을 보이지 않는다.",
-                ruleNumber: 8);
+                ruleNumber: 8,
+                // Weighted down: it runs (looped) for the whole patrol and can't be tuned out, so
+                // even an average share felt constant in playtest (weight 1 = 0.90/run, 0.6 ≈ 0.6).
+                selectionWeight: 0.6f);
 
             var knockOnDoor = CreateAnomaly("KnockOnDoor", "출입문 노크",
                 slots: new[] { TimeSlot.AM5 }, terminal: false, mirror: false, paintingTarget: false,

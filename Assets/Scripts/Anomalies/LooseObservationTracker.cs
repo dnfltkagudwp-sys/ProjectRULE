@@ -16,7 +16,9 @@ namespace RuleGhost.Anomalies
     public class LooseObservationTracker
     {
         public const float ObserveConeHalfAngleDegrees = 30f;
-        public const float MaxObserveDistance = 8f;
+        // 8 -> 12 (2026-10-02): the door/thermometer checks give no feedback, so looking their way
+        // from anywhere reasonably nearby should be enough to count.
+        public const float MaxObserveDistance = 12f;
         public const float ObserveDwellSeconds = 0.3f;
 
         private static readonly PaintingWall[] AllWalls = { PaintingWall.North, PaintingWall.West, PaintingWall.East };
